@@ -1,14 +1,10 @@
 package com.telusko.part29springsecex.repo;
 
 import com.telusko.part29springsecex.model.TempUser;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-public interface TempUserRepository extends JpaRepository<TempUser, Long> {
+@Repository
+public interface TempUserRepository extends MongoRepository<TempUser, String> {
     TempUser findByEmail(String email);
-    void deleteByCreatedAtBefore(LocalDateTime time);
-
 }
-

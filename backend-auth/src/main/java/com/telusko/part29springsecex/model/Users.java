@@ -1,19 +1,17 @@
 package com.telusko.part29springsecex.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.MongoId;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
-@Entity
+@Document(collection = "users")
 public class Users {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @MongoId(FieldType.OBJECT_ID)
+    private String id;
 
     private String email;
-    private String password; // Nullable for OAuth users
-    private String provider; // "google" for OAuth, "local" for email/password
+    private String password;
+    private String provider;
 
     public Users() {
     }
@@ -24,11 +22,11 @@ public class Users {
         this.provider = provider;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -59,7 +57,7 @@ public class Users {
     @Override
     public String toString() {
         return "Users{" +
-                "id=" + id +
+                "id='" + id + '\'' +
                 ", email='" + email + '\'' +
                 ", password='" + password + '\'' +
                 ", provider='" + provider + '\'' +

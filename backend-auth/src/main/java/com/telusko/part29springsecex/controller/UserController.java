@@ -45,12 +45,16 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody BodyDTO body) {
-        Users user = new Users(body.email,body.password,"local");
+    public ResponseEntity<String> login(@RequestBody BodyDTO body) {
+        Users user = new Users(body.email, body.password, "local");
         System.out.println(body.email);
         System.out.println(body.password);
         System.out.println(body.message);
-        return service.verify(user);
+        String token = service.verify(user);
+        if (token == null) {
+            return ResponseEntity.badRequest().body("Invalid credentials");
+        }
+        return ResponseEntity.ok(token);
     }
 
 

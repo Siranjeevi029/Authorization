@@ -1,29 +1,31 @@
 package com.telusko.part29springsecex.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.MongoId;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
-@Getter
 @Setter
-@Entity
+@Getter
+@Document(collection = "temp_users")
 public class TempUser {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @MongoId(FieldType.OBJECT_ID)
+    private String id;
 
     private String email;
     private String password;
     private String encodedOtp;
 
-    private LocalDateTime createdAt;
 
-    // Constructors, getters, setters
+
+    // You can use java.util.Date or java.time.Instant
+    @Indexed(name = "createdAt_ttl_index")
+    private Date createdAt;
+
+
 }
-

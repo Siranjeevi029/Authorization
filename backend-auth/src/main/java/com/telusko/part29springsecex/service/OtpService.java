@@ -8,6 +8,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Random;
 
 @Service
@@ -37,7 +38,7 @@ public class OtpService {
         tempUser.setEmail(user.getEmail());
         tempUser.setPassword(passwordEncoder.encode(user.getPassword()));
         tempUser.setEncodedOtp(passwordEncoder.encode(otp));
-        tempUser.setCreatedAt(LocalDateTime.now());
+        tempUser.setCreatedAt(new Date());
         tempUserRepo.save(tempUser);
     }
 
@@ -50,10 +51,11 @@ public class OtpService {
 //        isNotExpired &&
         //commanded these two lines coz it won't exist after 1:30
          if( matches){
-             return userService.register(new Users(tempUser.getEmail(), tempUser.getPassword(),"local"));
-
+             Users u =  userService.register(new Users(tempUser.getEmail(), tempUser.getPassword(),"local"));
+             tempUserRepo.delete(tempUser);
+             return u;
          }
-         else return null;
+          return null;
 
     }
 }
