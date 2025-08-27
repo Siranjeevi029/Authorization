@@ -27,6 +27,12 @@ public class JWTService {
                 .withPayload(claims)
                 .sign(algorithm);
     }
+    public String extractEmail(String token) {
+        DecodedJWT decodedJWT = JWT.require(Algorithm.HMAC256(secretkey))
+                .build()
+                .verify(token);
+        return decodedJWT.getSubject();  // read subject, not "email" claim
+    }
 
     public String extractUserName(String token) {
         DecodedJWT decodedJWT = JWT.decode(token);
