@@ -12,7 +12,6 @@ const ProfilePage = () => {
     const fetchProfile = async () => {
       try {
         const res = await api.get(`/api/profile/${id}`);
-        // console.log(res.data)
         setProfile(res.data);
       } catch (err) {
         setError(err.message);
@@ -27,30 +26,27 @@ const ProfilePage = () => {
     try {
       const res = await api.post('/api/friend/request', { receiverEmail: profile.email });
       alert(res.data);
-      // No refresh needed on profile page
     } catch (err) {
-      // Show the specific error message from backend
       alert(err.response?.data || 'Failed to send friend request');
-      // No refresh on error, page remains as is
     }
   };
 
-  if (loading) return <div className="text-center py-10">Loading...</div>;
+  if (loading) return <div className="text-center py-10 text-gray-600">Loading...</div>;
   if (error) return <div className="text-center py-10 text-red-500">Error: {error}</div>;
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto bg-white shadow-md rounded-lg p-4">
-        <h1 className="text-2xl font-bold text-gray-800">{profile.username}</h1>
-        <p className="text-gray-600">
-          Skills offered: <span className="font-medium">{profile.skillsOffered?.join(', ') || ''}</span>
+      <div className="max-w-2xl mx-auto bg-white shadow-md rounded-lg p-6">
+        <h1 className="text-3xl font-bold text-secondary mb-4">{profile.username}</h1>
+        <p className="text-gray-600 mb-2">
+          <span className="font-medium">Skills offered:</span> {profile.skillsOffered?.join(', ') || 'None'}
         </p>
-        <p className="text-gray-600">
-          Skills wanted: <span className="font-medium">{profile.skillsWanted?.join(', ') || ''}</span>
+        <p className="text-gray-600 mb-2">
+          <span className="font-medium">Skills wanted:</span> {profile.skillsWanted?.join(', ') || 'None'}
         </p>
-        <p className="text-gray-500 mt-2">{profile.bio || 'No bio provided'}</p>
+        <p className="text-gray-500 mb-4">{profile.bio || 'No bio provided'}</p>
         <button
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-4"
+          className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
           onClick={handleSendFriendRequest}
         >
           Connect

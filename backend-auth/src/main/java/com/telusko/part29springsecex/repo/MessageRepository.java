@@ -8,4 +8,6 @@ import java.util.List;
 public interface MessageRepository extends MongoRepository<Message, String> {
     List<Message> findBySenderEmailAndReceiverEmailOrSenderEmailAndReceiverEmail(
             String senderEmail1, String receiverEmail1, String senderEmail2, String receiverEmail2);
+    List<Message> findByReceiverEmailAndIsReadFalse(String receiverEmail); // For unread count
+    List<Message> findBySenderEmailAndReceiverEmailAndIsReadFalse(String senderEmail, String receiverEmail); // For marking read
 }

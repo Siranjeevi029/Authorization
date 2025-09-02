@@ -9,4 +9,5 @@ public interface FriendRequestRepository extends MongoRepository<FriendRequest, 
     List<FriendRequest> findByReceiverEmailAndStatus(String receiverEmail, String status);
     List<FriendRequest> findBySenderEmailAndReceiverEmailAndStatus(String senderEmail, String receiverEmail, String status);
     List<FriendRequest> findBySenderEmailAndStatusOrReceiverEmailAndStatus(String senderEmail, String senderStatus, String receiverEmail, String receiverStatus);
+    List<FriendRequest> findByReceiverEmailAndStatusAndIsReadFalse(String receiverEmail, String status); // For unread count
 }

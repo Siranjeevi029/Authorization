@@ -7,7 +7,6 @@ import Register from './Register';
 import Email from './Email';
 import Profile from './profile/Profile';
 import HomePage from './HomePage';
-import './index.css';
 import './App.css';
 import EditProfile from './profile/EditProfile';
 import ProfilePage from './ProfilePage';
@@ -44,7 +43,6 @@ function App() {
         if (statusRes.data === 'new' && location.pathname !== '/profile') {
           navigate('/profile');
         } else if (statusRes.data === 'existing' && location.pathname === '/profile') {
-          
           navigate('/home');
         }
       } catch (profileErr) {
@@ -124,68 +122,65 @@ function App() {
 
   return (
     <GoogleOAuthProvider clientId="268005316048-h46lstqbi86sss91hpdgerorlkf8vkop.apps.googleusercontent.com">
-      <div style={{ padding: '20px' }}>
-        <nav style={{ marginBottom: '20px' }}>
-          {user ? (
-            <>
-              <span>Welcome, {user.username}</span>
-              <button onClick={handleSignOut} style={{ marginLeft: '10px' }}>
-                Sign Out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" style={{ marginRight: '10px' }}>Login</Link>
-              <Link to="/register">Register</Link>
-            </>
-          )}
+      <div className="min-h-screen bg-gray-100">
+        <nav className="bg-secondary text-white p-4 shadow-md">
+          <div className="max-w-6xl mx-auto flex justify-between items-center">
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-lg font-medium">Welcome, {user.username}</span>
+                <button
+                  onClick={handleSignOut}
+                  className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex space-x-4">
+                <Link to="/login" className="text-white hover:text-gray-200 transition">Login</Link>
+                <Link to="/register" className="text-white hover:text-gray-200 transition">Register</Link>
+              </div>
+            )}
+          </div>
         </nav>
-
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <Login
-                handleLogin={handleLogin}
-                email={email}
-                setEmail={setEmail}
-                password={password}
-                setPassword={setPassword}
-                errorMessage={errorMessage}
-                setErrorMessage={setErrorMessage}
-                handleGoogleSignIn={handleGoogleSignIn}
-              />
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <Register
-                handleRegister={handleRegister}
-                errorMessage={errorMessage}
-                email={email}
-                setEmail={setEmail}
-                password={password}
-                setPassword={setPassword}
-              />
-            }
-          />
-          
-          
-           <Route  path="/home"
-            element={<HomePage setErrorMessage={setErrorMessage} navigate={navigate} />}/>
-          
-          <Route path="/email" element={<Email email={email} />} />
-          <Route path='/editprofile' element={<EditProfile navigate={navigate}/>}/>
-          
-          <Route path="/profile"
-            element={<Profile setErrorMessage={setErrorMessage} />}/>
-           
-          <Route path='/profile/:id' element={<ProfilePage/>}/>
-          <Route path='/chat/:friendEmail' element={<ChatPage/>}/>
-          
-
-        </Routes>
+        <main className="max-w-6xl mx-auto p-4">
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <Login
+                  handleLogin={handleLogin}
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  errorMessage={errorMessage}
+                  setErrorMessage={setErrorMessage}
+                  handleGoogleSignIn={handleGoogleSignIn}
+                />
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <Register
+                  handleRegister={handleRegister}
+                  errorMessage={errorMessage}
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                />
+              }
+            />
+            <Route path="/home" element={<HomePage setErrorMessage={setErrorMessage} navigate={navigate} />} />
+            <Route path="/email" element={<Email email={email} />} />
+            <Route path="/editprofile" element={<EditProfile navigate={navigate} />} />
+            <Route path="/profile" element={<Profile setErrorMessage={setErrorMessage} />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
+            <Route path="/chat/:friendEmail" element={<ChatPage />} />
+          </Routes>
+        </main>
       </div>
     </GoogleOAuthProvider>
   );

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../axios';
+import { useNavigate } from 'react-router-dom';
 
-const EditProfile = ({navigate}) => {
-
-  
-
+const EditProfile = ({ navigate }) => {
   const [profile, setProfile] = useState({
     fullName: '',
     bio: '',
@@ -13,10 +11,8 @@ const EditProfile = ({navigate}) => {
   });
 
   useEffect(() => {
-    // Fetch current profile
     api.get('/api/user/profile')
       .then(response => {
-        
         setProfile({
           fullName: response.data.username,
           bio: response.data.bio,
@@ -62,66 +58,93 @@ const EditProfile = ({navigate}) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Edit Profile</h2>
-      <div>
-        <label>Full Name:</label>
-        <input
-          type="text"
-          name="fullName"
-          value={profile.fullName}
-          onChange={handleChange}
-          required
-        />
-      </div>
-      <div>
-        <label>Bio:</label>
-        <textarea
-          name="bio"
-          value={profile.bio}
-          onChange={handleChange}
-        />
-      </div>
-      <div>
-        <h3>Skills Offered</h3>
-        {profile.skillsOffered.map((skill, index) => (
-          <div key={index}>
-            <input
-              type="text"
-              value={skill.name}
-              onChange={(e) => handleSkillChange('skillsOffered', index, e.target.value)}
-              required
-            />
-            <button type="button" onClick={() => removeSkill('skillsOffered', index)}>
-              Remove
-            </button>
-          </div>
-        ))}
-        <button type="button" onClick={() => addSkill('skillsOffered')}>
-          Add Skill
+    <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold text-secondary mb-4 text-center">Edit Profile</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Full Name</label>
+          <input
+            type="text"
+            name="fullName"
+            value={profile.fullName}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Bio</label>
+          <textarea
+            name="bio"
+            value={profile.bio}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+          />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700">Skills Offered</h3>
+          {profile.skillsOffered.map((skill, index) => (
+            <div key={index} className="flex items-center space-x-2 mb-2">
+              <input
+                type="text"
+                value={skill.name}
+                onChange={(e) => handleSkillChange('skillsOffered', index, e.target.value)}
+                required
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={() => removeSkill('skillsOffered', index)}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => addSkill('skillsOffered')}
+            className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
+          >
+            Add Skill
+          </button>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700">Skills Wanted</h3>
+          {profile.skillsWanted.map((skill, index) => (
+            <div key={index} className="flex items-center space-x-2 mb-2">
+              <input
+                type="text"
+                value={skill.name}
+                onChange={(e) => handleSkillChange('skillsWanted', index, e.target.value)}
+                required
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={() => removeSkill('skillsWanted', index)}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => addSkill('skillsWanted')}
+            className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
+          >
+            Add Skill
+          </button>
+        </div>
+        <button
+          type="submit"
+          className="w-full bg-primary hover:bg-blue-700 text-white p-2 rounded-md transition"
+        >
+          Save Profile
         </button>
-      </div>
-      <div>
-        <h3>Skills Wanted</h3>
-        {profile.skillsWanted.map((skill, index) => (
-          <div key={index}>
-            <input
-              type="text"
-              value={skill.name}
-              onChange={(e) => handleSkillChange('skillsWanted', index, e.target.value)}
-              required
-            />
-            <button type="button" onClick={() => removeSkill('skillsWanted', index)}>
-              Remove
-            </button>
-          </div>
-        ))}
-        <button type="button" onClick={() => addSkill('skillsWanted')}>
-          Add Skill
-        </button>
-      </div>
-      <button type="submit">Save Profile</button>
-    </form>
+      </form>
+    </div>
   );
 };
 

@@ -1,7 +1,5 @@
 package com.telusko.part29springsecex.model;
 
-
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,6 +13,7 @@ public class Message {
     private String receiverEmail;
     private String content;
     private LocalDateTime timestamp;
+    private boolean isRead; // New field for read status
 
     // Getters and Setters
     public String getId() {
@@ -55,5 +54,13 @@ public class Message {
 
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public boolean isRead() {
+        return isRead;
+    }
+
+    public void setRead(boolean isRead) {
+        this.isRead = isRead;
     }
 }

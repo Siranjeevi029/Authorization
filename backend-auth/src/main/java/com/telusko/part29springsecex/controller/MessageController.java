@@ -37,7 +37,6 @@ public class MessageController {
             if (senderEmail == null || senderEmail.isBlank() || receiverEmail == null || content == null) {
                 return ResponseEntity.badRequest().body("Missing required fields");
             }
-            // Correct friendship check
             List<FriendRequest> direct = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(senderEmail, receiverEmail, "ACCEPTED");
             List<FriendRequest> reverse = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(receiverEmail, senderEmail, "ACCEPTED");
             if (direct.isEmpty() && reverse.isEmpty()) {
@@ -48,6 +47,7 @@ public class MessageController {
             message.setReceiverEmail(receiverEmail);
             message.setContent(content);
             message.setTimestamp(LocalDateTime.now());
+            message.setRead(false); // New messages are unread
             messageRepository.save(message);
             return ResponseEntity.ok("Message sent");
         } catch (Exception e) {
@@ -63,7 +63,6 @@ public class MessageController {
             if (email == null || email.isBlank()) {
                 return ResponseEntity.badRequest().body("Invalid token: missing email");
             }
-            // Correct friendship check
             List<FriendRequest> direct = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(email, friendEmail, "ACCEPTED");
             List<FriendRequest> reverse = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(friendEmail, email, "ACCEPTED");
             if (direct.isEmpty() && reverse.isEmpty()) {
@@ -76,11 +75,44 @@ public class MessageController {
                 map.put("senderEmail", message.getSenderEmail());
                 map.put("content", message.getContent());
                 map.put("timestamp", message.getTimestamp().toString());
+                map.put("isRead", message.isRead()); // Include read status
                 return map;
             }).collect(Collectors.toList());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             System.out.println("Get Messages Error: " + e.getMessage());
+            return ResponseEntity.status(401).body("Invalid token: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/messages/unread-count")
+    public ResponseEntity<?> getUnreadMessagesCount(@RequestHeader("Authorization") String token) {
+        try {
+            String email = jwtService.extractEmail(token.replace("Bearer ", ""));
+            if (email == null || email.isBlank()) {
+                return ResponseEntity.badRequest().body("Invalid token: missing email");
+            }
+            List<Message> messages = messageRepository.findByReceiverEmailAndIsReadFalse(email);
+            return ResponseEntity.ok(Map.of("count", messages.size()));
+        } catch (Exception e) {
+            System.out.println("Get Unread Messages Count Error: " + e.getMessage());
+            return ResponseEntity.status(401).body("Invalid token: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/messages/mark-read/{friendEmail}")
+    public ResponseEntity<?> markMessagesAsRead(@RequestHeader("Authorization") String token, @PathVariable String friendEmail) {
+        try {
+            String email = jwtService.extractEmail(token.replace("Bearer ", ""));
+            if (email == null || email.isBlank()) {
+                return ResponseEntity.badRequest().body("Invalid token: missing email");
+            }
+            List<Message> messages = messageRepository.findBySenderEmailAndReceiverEmailAndIsReadFalse(friendEmail, email);
+            messages.forEach(msg -> msg.setRead(true));
+            messageRepository.saveAll(messages);
+            return ResponseEntity.ok("Messages marked as read");
+        } catch (Exception e) {
+            System.out.println("Mark Messages Read Error: " + e.getMessage());
             return ResponseEntity.status(401).body("Invalid token: " + e.getMessage());
         }
     }

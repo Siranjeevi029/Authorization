@@ -1,7 +1,5 @@
 package com.telusko.part29springsecex.model;
 
-
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -12,6 +10,7 @@ public class FriendRequest {
     private String senderEmail;
     private String receiverEmail;
     private String status; // PENDING, ACCEPTED, REJECTED
+    private boolean isRead; // New field for read status
 
     // Getters and Setters
     public String getId() {
@@ -44,5 +43,13 @@ public class FriendRequest {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public boolean isRead() {
+        return isRead;
+    }
+
+    public void setRead(boolean isRead) {
+        this.isRead = isRead;
     }
 }

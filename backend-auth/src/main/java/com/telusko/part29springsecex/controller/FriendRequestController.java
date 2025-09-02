@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class FriendRequestController {
 
     @Autowired
-   private JWTService jwtService;
+    private JWTService jwtService;
 
     @Autowired
     private FriendRequestRepository friendRequestRepository;
@@ -44,7 +44,6 @@ public class FriendRequestController {
             if (senderEmail.equals(receiver.getEmail())) {
                 return ResponseEntity.badRequest().body("Cannot send friend request to yourself");
             }
-            // Check if already friends (accepted in either direction)
             List<FriendRequest> existingAccepted = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(
                     senderEmail, receiver.getEmail(), "ACCEPTED");
             List<FriendRequest> existingAcceptedReverse = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(
@@ -52,27 +51,25 @@ public class FriendRequestController {
             if (!existingAccepted.isEmpty() || !existingAcceptedReverse.isEmpty()) {
                 return ResponseEntity.badRequest().body("Already friends");
             }
-            // Check for existing pending from sender to receiver
             List<FriendRequest> existingRequests = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(
                     senderEmail, receiver.getEmail(), "PENDING");
             if (!existingRequests.isEmpty()) {
                 return ResponseEntity.badRequest().body("Friend request already sent");
             }
-            // Check for existing pending from receiver to sender
             List<FriendRequest> reverseRequests = friendRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(
                     receiver.getEmail(), senderEmail, "PENDING");
             if (!reverseRequests.isEmpty()) {
-                // Accept the reverse request instantly
                 FriendRequest reverseRequest = reverseRequests.get(0);
                 reverseRequest.setStatus("ACCEPTED");
+                reverseRequest.setRead(true); // Mark as read when accepted
                 friendRequestRepository.save(reverseRequest);
                 return ResponseEntity.ok("You are now friends!");
             }
-            // Create new request
             FriendRequest friendRequest = new FriendRequest();
             friendRequest.setSenderEmail(senderEmail);
             friendRequest.setReceiverEmail(receiver.getEmail());
             friendRequest.setStatus("PENDING");
+            friendRequest.setRead(false); // New requests are unread
             friendRequestRepository.save(friendRequest);
             return ResponseEntity.ok("Friend request sent");
         } catch (Exception e) {
@@ -100,6 +97,7 @@ public class FriendRequestController {
                 return ResponseEntity.badRequest().body("Request is not pending");
             }
             frRequest.setStatus("ACCEPTED");
+            frRequest.setRead(true); // Mark as read when accepted
             friendRequestRepository.save(frRequest);
             return ResponseEntity.ok("Friend request accepted");
         } catch (Exception e) {
@@ -126,7 +124,7 @@ public class FriendRequestController {
             if (!frRequest.getStatus().equals("PENDING")) {
                 return ResponseEntity.badRequest().body("Request is not pending");
             }
-            // Delete instead of setting to REJECTED
+            frRequest.setRead(true); // Mark as read before deleting
             friendRequestRepository.delete(frRequest);
             return ResponseEntity.ok("Friend request rejected");
         } catch (Exception e) {
@@ -149,11 +147,44 @@ public class FriendRequestController {
                 map.put("requestId", req.getId());
                 map.put("senderUsername", sender != null ? sender.getFullName() : "Unknown");
                 map.put("senderEmail", req.getSenderEmail());
+                map.put("isRead", req.isRead()); // Include read status
                 return map;
             }).collect(Collectors.toList());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             System.out.println("Get Friend Requests Error: " + e.getMessage());
+            return ResponseEntity.status(401).body("Invalid token: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/requests/unread-count")
+    public ResponseEntity<?> getUnreadFriendRequestsCount(@RequestHeader("Authorization") String token) {
+        try {
+            String email = jwtService.extractEmail(token.replace("Bearer ", ""));
+            if (email == null || email.isBlank()) {
+                return ResponseEntity.badRequest().body("Invalid token: missing email");
+            }
+            List<FriendRequest> requests = friendRequestRepository.findByReceiverEmailAndStatusAndIsReadFalse(email, "PENDING");
+            return ResponseEntity.ok(Map.of("count", requests.size()));
+        } catch (Exception e) {
+            System.out.println("Get Unread Friend Requests Count Error: " + e.getMessage());
+            return ResponseEntity.status(401).body("Invalid token: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/requests/mark-read")
+    public ResponseEntity<?> markFriendRequestsAsRead(@RequestHeader("Authorization") String token) {
+        try {
+            String email = jwtService.extractEmail(token.replace("Bearer ", ""));
+            if (email == null || email.isBlank()) {
+                return ResponseEntity.badRequest().body("Invalid token: missing email");
+            }
+            List<FriendRequest> requests = friendRequestRepository.findByReceiverEmailAndStatusAndIsReadFalse(email, "PENDING");
+            requests.forEach(req -> req.setRead(true));
+            friendRequestRepository.saveAll(requests);
+            return ResponseEntity.ok("Friend requests marked as read");
+        } catch (Exception e) {
+            System.out.println("Mark Friend Requests Read Error: " + e.getMessage());
             return ResponseEntity.status(401).body("Invalid token: " + e.getMessage());
         }
     }
