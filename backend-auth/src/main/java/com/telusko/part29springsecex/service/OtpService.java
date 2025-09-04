@@ -31,15 +31,34 @@ public class OtpService {
         return String.valueOf(otp);
     }
 
-    public void saveOtp(Users user, String otp) {
-//        if(tempUserRepo.findByEmail(user.getEmail())!=null)tempUserRepo.deleteByEmail(user.getEmail());
+    public String saveOtp(Users user, String otp) {
+        // Check if existing temp user exists and is still valid
+        TempUser existingTempUser = tempUserRepo.findByEmail(user.getEmail());
+        if(existingTempUser != null) {
+            Date createdAt = existingTempUser.getCreatedAt();
+            if (createdAt != null) {
+                long currentTime = System.currentTimeMillis();
+                long expiresAt = createdAt.getTime() + 60000; // 60 seconds
+                long timeLeftMs = expiresAt - currentTime;
+                
+                if (timeLeftMs > 0) {
+                    // OTP still valid, return wait message
+                    long timeLeftSeconds = timeLeftMs / 1000;
+                    return "WAIT:" + timeLeftSeconds;
+                }
+            }
+            // OTP expired, delete it
+            tempUserRepo.delete(existingTempUser);
+        }
 
+        // Create new OTP
         TempUser tempUser = new TempUser();
         tempUser.setEmail(user.getEmail());
         tempUser.setPassword(passwordEncoder.encode(user.getPassword()));
         tempUser.setEncodedOtp(passwordEncoder.encode(otp));
-        tempUser.setCreatedAt(new Date());
+        tempUser.setCreatedAt(new Date()); // This will trigger TTL deletion after 60 seconds
         tempUserRepo.save(tempUser);
+        return "SUCCESS";
     }
 
     public Users verifyOtp(String email, String rawOtp) {

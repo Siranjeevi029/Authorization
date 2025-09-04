@@ -84,160 +84,188 @@ const Profile = ({ setErrorMessage }) => {
   if (!isNewUser) return null;
 
   return (
-    <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-secondary mb-4 text-center">Complete Your Profile</h2>
-      {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Full Name</label>
-          <input
-            type="text"
-            name="fullName"
-            value={formData.fullName}
-            onChange={(e) => handleInputChange(e)}
-            required
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
+    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center animate-fadeInUp mb-8">
+          <div className="mx-auto h-16 w-16 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center mb-6">
+            <span className="text-white font-bold text-2xl">👤</span>
+          </div>
+          <h2 className="text-3xl font-bold gradient-text mb-2">Complete Your Profile</h2>
+          <p className="text-gray-300 text-lg">Tell us about yourself and your skills</p>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Profile Picture URL</label>
-          <input
-            type="url"
-            name="profilePicture"
-            value={formData.profilePicture}
-            onChange={(e) => handleInputChange(e)}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Location</label>
-          <input
-            type="text"
-            name="location"
-            value={formData.location}
-            onChange={(e) => handleInputChange(e)}
-            required
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Age</label>
-          <input
-            type="number"
-            name="age"
-            value={formData.age}
-            onChange={(e) => handleInputChange(e)}
-            required
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Skills Offered</label>
-          {formData.skillsOffered.map((skill, index) => (
-            <div key={index} className="border border-gray-300 p-4 rounded-md mb-4">
+        
+        <div className="glass-morphism rounded-2xl p-8 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+          {error && (
+            <div className="bg-red-900/50 border border-red-600 text-red-300 px-4 py-3 rounded-xl text-sm text-center mb-6">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Full Name</label>
               <input
                 type="text"
-                name="name"
-                placeholder="Skill Name"
-                value={skill.name}
-                onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
+                name="fullName"
+                value={formData.fullName}
+                onChange={(e) => handleInputChange(e)}
                 required
-                className="w-full p-2 border border-gray-300 rounded-md mb-2 focus:ring-primary focus:border-primary"
-              />
-              <input
-                type="text"
-                name="level"
-                placeholder="Level (e.g., Intermediate)"
-                value={skill.level}
-                onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md mb-2 focus:ring-primary focus:border-primary"
-              />
-              <input
-                type="text"
-                name="description"
-                placeholder="Description"
-                value={skill.description}
-                onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
-                className="w-full p-2 border border-gray-300 rounded-md mb-2 focus:ring-primary focus:border-primary"
-              />
-              <input
-                type="text"
-                name="availability"
-                placeholder="Availability (e.g., 9-10pm)"
-                value={skill.availability}
-                onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                placeholder="Enter your full name"
               />
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => addSkill('skillsOffered')}
-            className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
-          >
-            Add Skill Offered
-          </button>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Skills Wanted</label>
-          {formData.skillsWanted.map((skill, index) => (
-            <div key={index} className="border border-gray-300 p-4 rounded-md mb-4">
+            
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Profile Picture URL</label>
               <input
-                type="text"
-                name="name"
-                placeholder="Skill Name"
-                value={skill.name}
-                onChange={(e) => handleInputChange(e, index, 'skillsWanted')}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md mb-2 focus:ring-primary focus:border-primary"
-              />
-              <input
-                type="text"
-                name="level"
-                placeholder="Level (e.g., Beginner)"
-                value={skill.level}
-                onChange={(e) => handleInputChange(e, index, 'skillsWanted')}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+                type="url"
+                name="profilePicture"
+                value={formData.profilePicture}
+                onChange={(e) => handleInputChange(e)}
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                placeholder="https://example.com/your-photo.jpg"
               />
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => addSkill('skillsWanted')}
-            className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
-          >
-            Add Skill Wanted
-          </button>
+            
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Location</label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={(e) => handleInputChange(e)}
+                required
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                placeholder="City, Country"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Age</label>
+              <input
+                type="number"
+                name="age"
+                value={formData.age}
+                onChange={(e) => handleInputChange(e)}
+                required
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                placeholder="25"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-white mb-3">Skills Offered</label>
+              {formData.skillsOffered.map((skill, index) => (
+                <div key={index} className="bg-black/30 border border-red-600/30 p-4 rounded-xl mb-4 space-y-3">
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Skill Name"
+                    value={skill.name}
+                    onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
+                    required
+                    className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                  />
+                  <input
+                    type="text"
+                    name="level"
+                    placeholder="Level (e.g., Intermediate)"
+                    value={skill.level}
+                    onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
+                    required
+                    className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                  />
+                  <input
+                    type="text"
+                    name="description"
+                    placeholder="Description"
+                    value={skill.description}
+                    onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
+                    className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                  />
+                  <input
+                    type="text"
+                    name="availability"
+                    placeholder="Availability (e.g., 9-10pm)"
+                    value={skill.availability}
+                    onChange={(e) => handleInputChange(e, index, 'skillsOffered')}
+                    className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addSkill('skillsOffered')}
+                className="bg-red-600/20 hover:bg-red-600/30 text-white px-4 py-2 rounded-xl transition-all duration-300 border border-red-600/30"
+              >
+                Add Skill Offered
+              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-white mb-3">Skills Wanted</label>
+              {formData.skillsWanted.map((skill, index) => (
+                <div key={index} className="bg-black/30 border border-red-600/30 p-4 rounded-xl mb-4 space-y-3">
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Skill Name"
+                    value={skill.name}
+                    onChange={(e) => handleInputChange(e, index, 'skillsWanted')}
+                    required
+                    className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                  />
+                  <input
+                    type="text"
+                    name="level"
+                    placeholder="Level (e.g., Beginner)"
+                    value={skill.level}
+                    onChange={(e) => handleInputChange(e, index, 'skillsWanted')}
+                    required
+                    className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addSkill('skillsWanted')}
+                className="bg-red-600/20 hover:bg-red-600/30 text-white px-4 py-2 rounded-xl transition-all duration-300 border border-red-600/30"
+              >
+                Add Skill Wanted
+              </button>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Bio</label>
+              <textarea
+                name="bio"
+                value={formData.bio}
+                onChange={(e) => handleInputChange(e)}
+                rows="4"
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                placeholder="Tell us about yourself..."
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Known Languages (comma-separated)</label>
+              <input
+                type="text"
+                name="knownLanguages"
+                value={formData.knownLanguages}
+                onChange={(e) => handleInputChange(e)}
+                placeholder="e.g., English, Spanish, French"
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+              />
+            </div>
+            
+            <button
+              type="submit"
+              className="w-full btn-gradient text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300"
+            >
+              Save Profile
+            </button>
+          </form>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Bio</label>
-          <textarea
-            name="bio"
-            value={formData.bio}
-            onChange={(e) => handleInputChange(e)}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Known Languages (comma-separated)</label>
-          <input
-            type="text"
-            name="knownLanguages"
-            value={formData.knownLanguages}
-            onChange={(e) => handleInputChange(e)}
-            placeholder="e.g., English, Spanish"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-primary hover:bg-blue-700 text-white p-2 rounded-md transition"
-        >
-          Save Profile
-        </button>
-      </form>
+      </div>
     </div>
   );
 };

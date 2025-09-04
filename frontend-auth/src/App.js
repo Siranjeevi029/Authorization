@@ -19,6 +19,8 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [waitTime, setWaitTime] = useState(0);
+  const [isWaiting, setIsWaiting] = useState(false);
 
   useEffect(() => {
     setErrorMessage('');
@@ -102,12 +104,42 @@ function App() {
   const handleRegister = async (event) => {
     setErrorMessage('');
     event.preventDefault();
+    
+    if (isWaiting) {
+      return; // Prevent submission while waiting
+    }
+    
     try {
       const value = await api.post('/register', { email, password });
       console.log(value);
       navigate('/email');
     } catch (error) {
-      setErrorMessage('Username already exists');
+      const errorMsg = error.response?.data || 'Registration failed';
+      
+      // Check if it's a wait message
+      if (errorMsg.includes('Please wait') && errorMsg.includes('seconds')) {
+        const waitSeconds = parseInt(errorMsg.match(/\d+/)[0]);
+        setWaitTime(waitSeconds);
+        setIsWaiting(true);
+        setErrorMessage(`Please wait ${waitSeconds} seconds before requesting a new OTP`);
+        
+        // Start countdown timer
+        const timer = setInterval(() => {
+          setWaitTime(prev => {
+            if (prev <= 1) {
+              setIsWaiting(false);
+              setErrorMessage('');
+              clearInterval(timer);
+              return 0;
+            }
+            const newTime = prev - 1;
+            setErrorMessage(`Please wait ${newTime} seconds before requesting a new OTP`);
+            return newTime;
+          });
+        }, 1000);
+      } else {
+        setErrorMessage(errorMsg.includes('already exists') ? 'Username already exists' : errorMsg);
+      }
       console.log(error);
     }
   };
@@ -122,28 +154,52 @@ function App() {
 
   return (
     <GoogleOAuthProvider clientId="268005316048-h46lstqbi86sss91hpdgerorlkf8vkop.apps.googleusercontent.com">
-      <div className="min-h-screen bg-gray-100">
-        <nav className="bg-secondary text-white p-4 shadow-md">
-          <div className="max-w-6xl mx-auto flex justify-between items-center">
-            {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-lg font-medium">Welcome, {user.username}</span>
-                <button
-                  onClick={handleSignOut}
-                  className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
-                >
-                  Sign Out
-                </button>
+      <div className="min-h-screen">
+        <nav className="glass-morphism border-0 border-b border-red-600/30 sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-6 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">S</span>
+                </div>
+                <span className="text-white font-bold text-xl tracking-tight">SkillConnect</span>
               </div>
-            ) : (
-              <div className="flex space-x-4">
-                <Link to="/login" className="text-white hover:text-gray-200 transition">Login</Link>
-                <Link to="/register" className="text-white hover:text-gray-200 transition">Register</Link>
-              </div>
-            )}
+              
+              {user ? (
+                <div className="flex items-center space-x-6 animate-slideInRight">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-700 rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">{user.username?.charAt(0)?.toUpperCase()}</span>
+                    </div>
+                    <span className="text-white font-medium">Welcome, {user.username}</span>
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-300 border border-red-600"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex space-x-4">
+                  <Link 
+                    to="/login" 
+                    className="text-gray-300 hover:text-white font-medium px-4 py-2 rounded-lg hover:bg-red-600/20 transition-all duration-300"
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    to="/register" 
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-300"
+                  >
+                    Register
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </nav>
-        <main className="max-w-6xl mx-auto p-4">
+        <main className="max-w-6xl mx-auto p-6">
           <Routes>
             <Route
               path="/login"
@@ -170,6 +226,7 @@ function App() {
                   setEmail={setEmail}
                   password={password}
                   setPassword={setPassword}
+                  isWaiting={isWaiting}
                 />
               }
             />

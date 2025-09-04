@@ -60,27 +60,51 @@ const ChatPage = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-10">Loading...</div>;
-  if (error) return <div className="text-center py-10 text-red-500">Error: {error}</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="glass-morphism rounded-2xl p-8 text-center animate-fadeInUp">
+        <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <span className="text-red-400 text-2xl">💬</span>
+        </div>
+        <p className="text-white text-lg">Loading chat...</p>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="glass-morphism rounded-2xl p-8 text-center animate-fadeInUp">
+        <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <span className="text-red-400 text-2xl">⚠</span>
+        </div>
+        <p className="text-white text-lg">Error: {error}</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto bg-white shadow-md rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Chat with {friendUsername}</h2>
-        <div ref={chatRef} className="h-96 overflow-y-auto mb-4 space-y-4 p-4 border border-gray-200 rounded-lg">
+    <div className="min-h-screen py-8 px-4">
+      <div className="max-w-4xl mx-auto glass-morphism rounded-2xl p-6 animate-fadeInUp">
+        <div className="flex items-center space-x-4 mb-6">
+          <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
+            <span className="text-white font-bold text-lg">{friendUsername?.charAt(0)?.toUpperCase()}</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white">Chat with {friendUsername}</h2>
+        </div>
+        <div ref={chatRef} className="h-96 overflow-y-auto mb-4 space-y-4 p-4 border border-red-600/30 rounded-xl bg-black/20 backdrop-blur-sm">
           {messages.length === 0 ? (
-            <p className="text-center text-gray-500">No messages yet. Start the conversation!</p>
+            <p className="text-center text-gray-300">No messages yet. Start the conversation!</p>
           ) : (
             messages.map((msg, index) => {
               const isOwnMessage = msg.senderEmail === userProfile.email;
               const senderName = isOwnMessage ? userProfile.username : friendUsername;
               return (
                 <div key={index} className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-                  <div className={`max-w-md px-4 py-3 rounded-lg shadow ${isOwnMessage ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                    <p className="text-sm font-semibold mb-1">{senderName}</p>
+                  <div className={`max-w-md px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm border ${isOwnMessage ? 'bg-gradient-to-r from-red-600 to-red-700 text-white border-red-500/30' : 'bg-black/40 text-white border-red-600/30'}`}>
+                    <p className="text-sm font-semibold mb-1 opacity-80">{senderName}</p>
                     <p className="text-base">{msg.content}</p>
                   </div>
-                  <p className={`text-xs text-gray-500 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
+                  <p className={`text-xs text-gray-400 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
                     {new Date(msg.timestamp).toLocaleString()}
                   </p>
                 </div>
@@ -88,16 +112,17 @@ const ChatPage = () => {
             })
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <input
             type="text"
             value={messageInput}
             onChange={(e) => setMessageInput(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            className="flex-1 border border-red-600/30 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-black/30 text-white placeholder-gray-400 backdrop-blur-sm"
             placeholder="Type a message..."
           />
           <button
-            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
+            className="btn-gradient text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105"
             onClick={handleSendMessage}
           >
             Send

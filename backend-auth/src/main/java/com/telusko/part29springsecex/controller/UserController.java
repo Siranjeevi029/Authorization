@@ -31,17 +31,25 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody Users user) throws Exception {
         String email = user.getEmail();
-        String otp = otpService.generateOtp();
+        
         if (repo.findByEmail(user.getEmail())!=null) {
-
             throw new RuntimeException("Username already exists");
         }
-        otpService.saveOtp(user,otp);
+        
+        String otp = otpService.generateOtp();
+        String result = otpService.saveOtp(user, otp);
+        
+        if (result.startsWith("WAIT:")) {
+            // Extract wait time from result
+            String waitTime = result.substring(5); // Remove "WAIT:" prefix
+            return ResponseEntity.badRequest().body("Please wait " + waitTime + " seconds before requesting a new OTP");
+        }
+        
+        // Send OTP email only if new OTP was created
         emailService.sendEmail(email, "Your OTP Code", "Your OTP is: " + otp);
         System.out.println(user.getEmail()+" "+user.getPassword());
 
         return ResponseEntity.ok("otp sent");
-
     }
 
     @PostMapping("/login")

@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.FieldType;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 @Setter
 @Getter
@@ -21,11 +22,7 @@ public class TempUser {
     private String password;
     private String encodedOtp;
 
-
-
-    // You can use java.util.Date or java.time.Instant
-    @Indexed(name = "createdAt_ttl_index")
+    // TTL index that expires documents after 60 seconds (1 minute)
+    @Indexed(name = "createdAt_ttl_index", expireAfterSeconds = 60)
     private Date createdAt;
-
-
 }

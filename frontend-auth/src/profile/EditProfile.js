@@ -58,92 +58,108 @@ const EditProfile = ({ navigate }) => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-secondary mb-4 text-center">Edit Profile</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Full Name</label>
-          <input
-            type="text"
-            name="fullName"
-            value={profile.fullName}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
+    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center animate-fadeInUp mb-8">
+          <div className="mx-auto h-16 w-16 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center mb-6">
+            <span className="text-white font-bold text-2xl">✏️</span>
+          </div>
+          <h2 className="text-3xl font-bold gradient-text mb-2">Edit Profile</h2>
+          <p className="text-gray-300 text-lg">Update your information and skills</p>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Bio</label>
-          <textarea
-            name="bio"
-            value={profile.bio}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-          />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Skills Offered</h3>
-          {profile.skillsOffered.map((skill, index) => (
-            <div key={index} className="flex items-center space-x-2 mb-2">
+        
+        <div className="glass-morphism rounded-2xl p-8 animate-fadeInUp" style={{animationDelay: '0.2s'}}>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Full Name</label>
               <input
                 type="text"
-                value={skill.name}
-                onChange={(e) => handleSkillChange('skillsOffered', index, e.target.value)}
+                name="fullName"
+                value={profile.fullName}
+                onChange={handleChange}
                 required
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                placeholder="Enter your full name"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">Bio</label>
+              <textarea
+                name="bio"
+                value={profile.bio}
+                onChange={handleChange}
+                rows="4"
+                className="w-full px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                placeholder="Tell us about yourself..."
+              />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-3">Skills Offered</h3>
+              {profile.skillsOffered.map((skill, index) => (
+                <div key={index} className="flex items-center space-x-3 mb-3">
+                  <input
+                    type="text"
+                    value={skill.name}
+                    onChange={(e) => handleSkillChange('skillsOffered', index, e.target.value)}
+                    required
+                    className="flex-1 px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                    placeholder="Skill name"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSkill('skillsOffered', index)}
+                    className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-3 rounded-xl transition-all duration-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
               <button
                 type="button"
-                onClick={() => removeSkill('skillsOffered', index)}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"
+                onClick={() => addSkill('skillsOffered')}
+                className="bg-red-600/20 hover:bg-red-600/30 text-white px-4 py-2 rounded-xl transition-all duration-300 border border-red-600/30"
               >
-                Remove
+                Add Skill Offered
               </button>
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => addSkill('skillsOffered')}
-            className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
-          >
-            Add Skill
-          </button>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">Skills Wanted</h3>
-          {profile.skillsWanted.map((skill, index) => (
-            <div key={index} className="flex items-center space-x-2 mb-2">
-              <input
-                type="text"
-                value={skill.name}
-                onChange={(e) => handleSkillChange('skillsWanted', index, e.target.value)}
-                required
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-              />
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-3">Skills Wanted</h3>
+              {profile.skillsWanted.map((skill, index) => (
+                <div key={index} className="flex items-center space-x-3 mb-3">
+                  <input
+                    type="text"
+                    value={skill.name}
+                    onChange={(e) => handleSkillChange('skillsWanted', index, e.target.value)}
+                    required
+                    className="flex-1 px-4 py-3 border border-red-600/30 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-300 bg-black/50 backdrop-blur-sm text-white placeholder-gray-400"
+                    placeholder="Skill name"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSkill('skillsWanted', index)}
+                    className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-3 rounded-xl transition-all duration-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
               <button
                 type="button"
-                onClick={() => removeSkill('skillsWanted', index)}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"
+                onClick={() => addSkill('skillsWanted')}
+                className="bg-red-600/20 hover:bg-red-600/30 text-white px-4 py-2 rounded-xl transition-all duration-300 border border-red-600/30"
               >
-                Remove
+                Add Skill Wanted
               </button>
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => addSkill('skillsWanted')}
-            className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
-          >
-            Add Skill
-          </button>
+            <button
+              type="submit"
+              className="w-full btn-gradient text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300"
+            >
+              Save Profile
+            </button>
+          </form>
         </div>
-        <button
-          type="submit"
-          className="w-full bg-primary hover:bg-blue-700 text-white p-2 rounded-md transition"
-        >
-          Save Profile
-        </button>
-      </form>
+      </div>
     </div>
   );
 };
