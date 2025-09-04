@@ -13,6 +13,7 @@ const HomePage = ({ setErrorMessage }) => {
   const [emailToUsername, setEmailToUsername] = useState({});
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadMessagesPerFriend, setUnreadMessagesPerFriend] = useState({});
 
   const fetchData = async () => {
     try {
@@ -39,6 +40,14 @@ const HomePage = ({ setErrorMessage }) => {
 
       const unreadMessagesRes = await api.get('/api/messages/unread-count');
       setUnreadMessages(unreadMessagesRes.data.count || 0);
+
+      try {
+        const unreadCountsPerFriendRes = await api.get('/api/messages/unread-counts-per-friend');
+        setUnreadMessagesPerFriend(unreadCountsPerFriendRes.data || {});
+      } catch (err) {
+        console.warn('Failed to fetch unread messages per friend:', err.response?.data || err.message);
+        setUnreadMessagesPerFriend({});
+      }
     } catch (err) {
       setError(err.response?.data || err.message);
       setErrorMessage('Failed to load homepage data');
@@ -55,7 +64,7 @@ const HomePage = ({ setErrorMessage }) => {
     try {
       const res = await api.post('/api/friend/request', { receiverEmail });
       alert(res.data);
-      await fetchData(); // Refresh all data
+      await fetchData();
     } catch (err) {
       alert(err.response?.data || 'Failed to send friend request');
     }
@@ -65,7 +74,7 @@ const HomePage = ({ setErrorMessage }) => {
     try {
       const res = await api.post(`/api/friend/request/${requestId}/accept`);
       alert(res.data);
-      await fetchData(); // Refresh all data
+      await fetchData();
     } catch (err) {
       alert(err.response?.data || 'Failed to accept friend request');
       setError(err.response?.data || err.message);
@@ -77,7 +86,7 @@ const HomePage = ({ setErrorMessage }) => {
     try {
       const res = await api.post(`/api/friend/request/${requestId}/reject`);
       alert(res.data);
-      await fetchData(); // Refresh all data
+      await fetchData();
     } catch (err) {
       alert(err.response?.data || 'Failed to reject friend request');
       setError(err.response?.data || err.message);
@@ -102,24 +111,24 @@ const HomePage = ({ setErrorMessage }) => {
   const getUsername = (email) => emailToUsername[email] || email;
 
   const UserCard = ({ user }) => (
-    <div className="bg-white shadow-md rounded-lg p-6 hover:shadow-lg transition">
-      <h3 className="text-lg font-semibold text-secondary">{user.username}</h3>
+    <div className="bg-white shadow-md rounded-lg p-6 hover:shadow-lg transition-shadow duration-200">
+      <h3 className="text-lg font-semibold text-blue-800">{user.username}</h3>
       <p className="text-sm text-gray-600">
         <span className="font-medium">Skills offered:</span> {user.skillsOffered?.join(', ') || 'None'}
       </p>
       <p className="text-sm text-gray-600">
         <span className="font-medium">Skills wanted:</span> {user.skillsWanted?.join(', ') || 'None'}
       </p>
-      <p className="text-sm text-gray-500 mt-1 truncate">{user.bio || 'No bio provided'}</p>
+      <p className="text-sm text-gray-500 mt-2 truncate">{user.bio || 'No bio provided'}</p>
       <div className="mt-4 flex gap-3">
         <Link
           to={`/profile/${user.id}`}
-          className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors duration-200"
         >
           View Profile
         </Link>
         <button
-          className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
+          className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md transition-colors duration-200"
           onClick={() => handleSendFriendRequest(user.email)}
         >
           Connect
@@ -129,22 +138,21 @@ const HomePage = ({ setErrorMessage }) => {
   );
 
   const NotificationCard = ({ request }) => (
-    <div className="bg-white shadow-md rounded-lg p-6 flex justify-between items-center">
+    <div className="bg-white shadow-md rounded-lg p-6 flex justify-between items-center hover:shadow-lg transition-shadow duration-200">
       <div>
         <p className="text-sm text-gray-600">
           Friend request from: <span className="font-medium">{request.senderUsername}</span>
-          {!request.isRead && <span className="ml-2 text-red-500 font-bold">New</span>}
         </p>
       </div>
       <div className="flex gap-3">
         <button
-          className="bg-accent hover:bg-green-600 text-white px-4 py-2 rounded-md transition"
+          className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md transition-colors duration-200"
           onClick={() => handleAcceptRequest(request.requestId)}
         >
           Accept
         </button>
         <button
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition"
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors duration-200"
           onClick={() => handleRejectRequest(request.requestId)}
         >
           Reject
@@ -153,76 +161,108 @@ const HomePage = ({ setErrorMessage }) => {
     </div>
   );
 
-  const FriendCard = ({ friend }) => (
-    <div className="bg-white shadow-md rounded-lg p-6 flex justify-between items-center">
-      <div>
-        <h3 className="text-lg font-semibold text-secondary">{friend.username}</h3>
-        <p className="text-sm text-gray-600">
-          <span className="font-medium">Skills offered:</span> {friend.skillsOffered?.join(', ') || 'None'}
-        </p>
-        <p className="text-sm text-gray-600">
-          <span className="font-medium">Skills wanted:</span> {friend.skillsWanted?.join(', ') || 'None'}
-        </p>
-      </div>
+  const FriendCard = ({ friend }) => {
+    const unreadCount = unreadMessagesPerFriend[friend.email]?.unreadCount || 0;
+    const lastMessage = unreadMessagesPerFriend[friend.email]?.lastMessage;
+    const lastMessageTimestamp = unreadMessagesPerFriend[friend.email]?.lastMessageTimestamp;
+
+    const formatTimestamp = (timestamp) => {
+      if (!timestamp) return '';
+      const date = new Date(timestamp);
+      const today = new Date();
+      const isToday = date.toDateString() === today.toDateString();
+      return isToday
+        ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    };
+
+    return (
       <Link
         to={`/chat/${friend.email}`}
-        className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-md transition"
+        className="bg-white shadow-md rounded-lg p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors duration-200 relative"
       >
-        Chat
+        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-800 font-semibold">
+          {friend.username.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold text-blue-800">{friend.username}</h3>
+            {unreadCount > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-600 truncate max-w-[180px]">
+            {lastMessage ? (
+              <>
+                {lastMessage.substring(0, 30)}
+                {lastMessage.length > 30 ? '...' : ''}
+              </>
+            ) : (
+              'No messages yet'
+            )}
+          </p>
+          {lastMessageTimestamp && (
+            <p className="text-xs text-gray-500">{formatTimestamp(lastMessageTimestamp)}</p>
+          )}
+        </div>
       </Link>
-    </div>
-  );
+    );
+  };
 
   if (loading) return <div className="text-center py-10 text-gray-600">Loading...</div>;
   if (error) return <div className="text-center py-10 text-red-500">Error: {error}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
         {userProfile && (
           <div className="mb-8 bg-white shadow-md rounded-lg p-6">
-            <h1 className="text-2xl font-bold text-secondary mb-2">Welcome, {userProfile.username}</h1>
+            <h1 className="text-2xl font-bold text-blue-800 mb-2">Welcome, {userProfile.username}</h1>
             <p className="text-gray-600 mb-1">
               <span className="font-medium">Your skills:</span> {userProfile.skillsOffered?.join(', ') || 'None'}
             </p>
-            <p className="text-gray-600 mb-2">
+            <p className="text-gray-600 mb-3">
               <span className="font-medium">Want to learn:</span> {userProfile.skillsWanted?.join(', ') || 'None'}
             </p>
-            <Link to="/editprofile" className="text-primary hover:underline">Edit Profile</Link>
+            <Link to="/editprofile" className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">
+              Edit Profile
+            </Link>
           </div>
         )}
 
-        <div className="mb-6 flex gap-3">
+        <div className="mb-6 flex gap-2 bg-gray-100 rounded-lg p-1">
           <button
-            className={`px-4 py-2 rounded-md font-medium transition ${
-              activeTab === 'matches' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            className={`flex-1 py-2 rounded-md font-medium transition-colors duration-200 ${
+              activeTab === 'matches' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
             onClick={() => handleTabChange('matches')}
           >
             Matches
           </button>
           <button
-            className={`relative px-4 py-2 rounded-md font-medium transition ${
-              activeTab === 'notifications' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            className={`flex-1 relative py-2 rounded-md font-medium transition-colors duration-200 ${
+              activeTab === 'notifications' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
             onClick={() => handleTabChange('notifications')}
           >
             Notifications
             {unreadNotifications > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                 {unreadNotifications}
               </span>
             )}
           </button>
           <button
-            className={`relative px-4 py-2 rounded-md font-medium transition ${
-              activeTab === 'friends' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            className={`flex-1 relative py-2 rounded-md font-medium transition-colors duration-200 ${
+              activeTab === 'friends' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
             onClick={() => handleTabChange('friends')}
           >
             Friends
             {unreadMessages > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                 {unreadMessages}
               </span>
             )}
@@ -231,12 +271,12 @@ const HomePage = ({ setErrorMessage }) => {
 
         {activeTab === 'matches' && (
           <div>
-            <h2 className="text-xl font-semibold text-secondary mb-4">Matches</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <h2 className="text-xl font-semibold text-blue-800 mb-4">Matches</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {matches.length > 0 ? (
                 matches.map((user) => <UserCard key={user.id} user={user} />)
               ) : (
-                <p className="text-gray-600">No matches found.</p>
+                <p className="text-gray-600 text-center">No matches found.</p>
               )}
             </div>
           </div>
@@ -244,12 +284,12 @@ const HomePage = ({ setErrorMessage }) => {
 
         {activeTab === 'notifications' && (
           <div>
-            <h2 className="text-xl font-semibold text-secondary mb-4">Notifications</h2>
-            <div className="grid grid-cols-1 gap-6">
+            <h2 className="text-xl font-semibold text-blue-800 mb-4">Notifications</h2>
+            <div className="grid grid-cols-1 gap-4">
               {friendRequests.length > 0 ? (
                 friendRequests.map((request) => <NotificationCard key={request.requestId} request={request} />)
               ) : (
-                <p className="text-gray-600">No pending friend requests.</p>
+                <p className="text-gray-600 text-center">No pending friend requests.</p>
               )}
             </div>
           </div>
@@ -257,12 +297,12 @@ const HomePage = ({ setErrorMessage }) => {
 
         {activeTab === 'friends' && (
           <div>
-            <h2 className="text-xl font-semibold text-secondary mb-4">Friends</h2>
-            <div className="grid grid-cols-1 gap-6">
+            <h2 className="text-xl font-semibold text-blue-800 mb-4">Friends</h2>
+            <div className="grid grid-cols-1 gap-3">
               {friends.length > 0 ? (
                 friends.map((friend) => <FriendCard key={friend.email} friend={friend} />)
               ) : (
-                <p className="text-gray-600">No friends yet.</p>
+                <p className="text-gray-600 text-center">No friends yet.</p>
               )}
             </div>
           </div>

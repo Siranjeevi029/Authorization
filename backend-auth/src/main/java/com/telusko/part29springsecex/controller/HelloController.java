@@ -12,4 +12,13 @@ public class HelloController {
         return "Welcome to Telusko "+request.getSession().getId();
     }
 
+    @GetMapping("/hotreload")
+    public String greeting(HttpServletRequest request) {
+        return "Welcome to Telusko "+request.getSession().getId();
+    }
+
+
+
 }
+
+

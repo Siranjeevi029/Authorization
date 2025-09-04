@@ -11,8 +11,8 @@ const Email = ({email}) => {
     event.preventDefault();
     try {
       
-      const res = await api.post('/otp/verify', { email,otp:code });
-      // localStorage.setItem('token', res.data.token); // Assuming backend returns JWT
+      await api.post('/otp/verify', { email,otp:code });
+      
       navigate('/login');
     } catch (err) {
       setErrorMessage('Invalid verification code');

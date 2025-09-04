@@ -29,7 +29,6 @@ const ChatPage = () => {
       const messagesRes = await api.get(`/api/messages/${friendEmail}`);
       setMessages(messagesRes.data || []);
 
-      // Mark messages as read
       await api.post(`/api/messages/mark-read/${friendEmail}`);
     } catch (err) {
       setError(err.response?.data || err.message);
@@ -40,7 +39,7 @@ const ChatPage = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, [friendEmail]);
 
@@ -55,7 +54,7 @@ const ChatPage = () => {
     try {
       await api.post('/api/message', { receiverEmail: friendEmail, content: messageInput });
       setMessageInput('');
-      await fetchData(); // Refresh messages
+      await fetchData();
     } catch (err) {
       setError(err.response?.data || err.message);
     }
@@ -78,7 +77,7 @@ const ChatPage = () => {
               return (
                 <div key={index} className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
                   <div className={`max-w-md px-4 py-3 rounded-lg shadow ${isOwnMessage ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                    <p className="text-sm font-semibold mb-1">{senderName} {!msg.isRead && !isOwnMessage && <span className="text-red-500 font-bold">New</span>}</p>
+                    <p className="text-sm font-semibold mb-1">{senderName}</p>
                     <p className="text-base">{msg.content}</p>
                   </div>
                   <p className={`text-xs text-gray-500 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
