@@ -32,7 +32,19 @@ const HomePage = ({ setErrorMessage }) => {
       setMatches(matchesRes.data.matches || []);
 
       const requestsRes = await api.get('/api/friend/requests');
-      const sortedRequests = (requestsRes.data || []).sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+      const sortedRequests = (requestsRes.data || []).sort((a, b) => {
+        const getDateFromValue = (dateValue) => {
+          if (Array.isArray(dateValue)) {
+            const [year, month, day, hour, minute, second] = dateValue;
+            return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
+          }
+          return new Date(dateValue);
+        };
+        
+        const dateB = getDateFromValue(b.timestamp || b.createdAt);
+        const dateA = getDateFromValue(a.timestamp || a.createdAt);
+        return dateB - dateA;
+      });
       setFriendRequests(sortedRequests);
 
       const friendsRes = await api.get('/api/friend/friends');

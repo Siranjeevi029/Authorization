@@ -24,11 +24,18 @@ const Email = ({email}) => {
       }
       
       // Get times from backend response
-      const createdAt = data.createdAt;
+      let createdAtTime;
+      if (Array.isArray(data.createdAt)) {
+        const [year, month, day, hour, minute, second, nano] = data.createdAt;
+        createdAtTime = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0).getTime();
+      } else {
+        createdAtTime = new Date(data.createdAt).getTime();
+      }
+      
       const currentTime = Date.now();
       
       // Calculate expiration time (creation time + 60 seconds)
-      const expiresAt = createdAt + 60000;
+      const expiresAt = createdAtTime + 60000;
       
       // Calculate time left in seconds
       const timeLeftMs = Math.max(0, expiresAt - currentTime);
