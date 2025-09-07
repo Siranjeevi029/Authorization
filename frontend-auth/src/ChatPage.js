@@ -368,8 +368,14 @@ const ChatPage = () => {
                   </h4>
                 </div>
                 <p className="text-sm mb-3">
-                  📅 {format(new Date(pendingRequest.scheduledDateTime), 'PPP')}<br/>
-                  🕐 {format(new Date(pendingRequest.scheduledDateTime), 'p')} ({pendingRequest.duration} min)
+                  {pendingRequest?.scheduledDateTime && !isNaN(new Date(pendingRequest.scheduledDateTime)) ? (
+                    <>
+                      📅 {format(new Date(pendingRequest.scheduledDateTime), 'PPP')}<br/>
+                      🕐 {format(new Date(pendingRequest.scheduledDateTime), 'p')} ({pendingRequest.duration} min)
+                    </>
+                  ) : (
+                    'Meeting time not available'
+                  )}
                 </p>
                 
                 {pendingRequest.senderEmail !== userProfile.email && (
@@ -427,7 +433,7 @@ const ChatPage = () => {
                 <div>
                   <h4 className="text-white font-medium">{getStatusText()}</h4>
                   <p className="text-white/70 text-sm">
-                    {scheduledMeeting?.scheduledDateTime ? (
+                    {scheduledMeeting?.scheduledDateTime && !isNaN(new Date(scheduledMeeting.scheduledDateTime)) ? (
                       <>{format(new Date(scheduledMeeting.scheduledDateTime), 'PPPp')} • {scheduledMeeting.duration} minutes</>
                     ) : (
                       'No meeting time scheduled'
