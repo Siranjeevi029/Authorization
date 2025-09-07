@@ -267,7 +267,7 @@ const HomePage = ({ setErrorMessage }) => {
     };
     
     // Check meeting status
-    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    const now = new Date();
     const meetingStart = new Date(meeting.scheduledDateTime);
     const meetingEnd = new Date(meetingStart.getTime() + (meeting.duration * 60 * 1000));
     

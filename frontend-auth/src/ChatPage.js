@@ -124,16 +124,16 @@ const ChatPage = () => {
     console.log('Selected time:', scheduledTime);
     console.log('Parsed hours:', hours);
     
-    // Create datetime in IST - NO timezone conversion
+    // Create datetime properly in IST timezone
     const scheduledDateTime = new Date(year, month - 1, day, hours, 0, 0, 0);
     
     console.log('Created datetime (local):', scheduledDateTime.toLocaleString());
     
-    // Verify this is in the future using IST
-    const istNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-    console.log('Current IST for comparison:', istNow.toLocaleString());
+    // Use current time for comparison (both in same timezone)
+    const now = new Date();
+    console.log('Current time for comparison:', now.toLocaleString());
     
-    if (scheduledDateTime <= istNow) {
+    if (scheduledDateTime <= now) {
       alert('Please select a future time');
       return;
     }
@@ -401,16 +401,16 @@ const ChatPage = () => {
 
         {/* Scheduled Meeting Display */}
         {scheduledMeeting && (() => {
-          const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+          const now = new Date();
           const meetingStart = new Date(scheduledMeeting.scheduledDateTime);
           const meetingEnd = new Date(meetingStart.getTime() + (scheduledMeeting.duration * 60 * 1000));
           
           const isFuture = now < meetingStart;
           const isActive = now >= meetingStart && now <= meetingEnd;
-          const isCompleted = now > meetingEnd;
+          const isPast = now > meetingEnd;
           
           // Auto-delete completed meetings
-          if (isCompleted && scheduledMeeting) {
+          if (isPast && scheduledMeeting) {
             setTimeout(() => handleDeleteMeeting(), 1000);
             return null;
           }
