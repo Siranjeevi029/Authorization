@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from './axios';
+import ScreenShare from './ScreenShare';
 
 const HomePage = ({ setErrorMessage }) => {
   const [userProfile, setUserProfile] = useState(null);
@@ -15,6 +16,9 @@ const HomePage = ({ setErrorMessage }) => {
   const [unreadFriendRequests, setUnreadFriendRequests] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadMessagesPerFriend, setUnreadMessagesPerFriend] = useState({});
+  const [scheduledMeetings, setScheduledMeetings] = useState([]);
+  const [isInVideoCall, setIsInVideoCall] = useState(false);
+  const [currentMeeting, setCurrentMeeting] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -74,6 +78,15 @@ const HomePage = ({ setErrorMessage }) => {
         console.warn('Failed to fetch unread messages per friend:', err.response?.data || err.message);
         setUnreadMessagesPerFriend({});
       }
+      
+      // Fetch all scheduled video meetings
+      try {
+        const meetingsRes = await api.get('/api/video-call/meetings');
+        setScheduledMeetings(meetingsRes.data || []);
+      } catch (err) {
+        console.warn('Failed to fetch scheduled meetings:', err.response?.data || err.message);
+        setScheduledMeetings([]);
+      }
     } catch (err) {
       setError(err.response?.data || err.message);
       setErrorMessage('Failed to load homepage data');
@@ -114,10 +127,15 @@ const HomePage = ({ setErrorMessage }) => {
       alert(res.data);
       await fetchData();
     } catch (err) {
-      alert(err.response?.data || 'Failed to reject friend request');
       setError(err.response?.data || err.message);
       setErrorMessage('Failed to reject friend request');
     }
+  };
+
+  const getTotalUnreadCount = () => {
+    return Object.values(unreadMessagesPerFriend).reduce((total, friend) => {
+      return total + (friend.unreadCount || 0);
+    }, 0);
   };
 
   const handleTabChange = async (tab) => {
@@ -208,6 +226,156 @@ const HomePage = ({ setErrorMessage }) => {
       </div>
     </div>
   );
+
+  const MeetingCard = ({ meeting }) => {
+    const [showDetails, setShowDetails] = useState(false);
+    
+    const formatDateTime = (dateTimeStr) => {
+      const date = new Date(dateTimeStr);
+      const options = { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      };
+      return date.toLocaleDateString(undefined, options);
+    };
+    
+    const handleDeleteMeeting = async () => {
+      if (!window.confirm('Are you sure you want to delete this meeting?')) return;
+      
+      try {
+        await api.delete(`/api/video-call/meeting/${meeting.id}`);
+        // Refresh the meetings list
+        const meetingsRes = await api.get('/api/video-call/meetings');
+        setScheduledMeetings(meetingsRes.data || []);
+        // Silently delete - no alert needed
+      } catch (err) {
+        console.error('Failed to delete meeting:', err);
+        // Silently handle error - no alert needed
+      }
+    };
+    
+    const handleJoinMeeting = () => {
+      setCurrentMeeting(meeting);
+      setIsInVideoCall(true);
+    };
+    
+    const getOtherParticipant = () => {
+      return meeting.participants?.find(email => email !== userProfile?.email) || 'Unknown';
+    };
+    
+    // Check meeting status
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    const meetingStart = new Date(meeting.scheduledDateTime);
+    const meetingEnd = new Date(meetingStart.getTime() + (meeting.duration * 60 * 1000));
+    
+    const isFuture = now < meetingStart;
+    const isActive = now >= meetingStart && now <= meetingEnd;
+    const isCompleted = now > meetingEnd;
+    
+    const getStatusInfo = () => {
+      if (isFuture) {
+        const minutesToStart = Math.ceil((meetingStart - now) / (1000 * 60));
+        return {
+          color: 'blue',
+          text: `Starts in ${minutesToStart} minutes`,
+          canJoin: false
+        };
+      }
+      if (isActive) {
+        const minutesToEnd = Math.ceil((meetingEnd - now) / (1000 * 60));
+        return {
+          color: 'green',
+          text: `Live! Ends in ${minutesToEnd} minutes`,
+          canJoin: true
+        };
+      }
+      return {
+        color: 'gray',
+        text: 'Completed',
+        canJoin: false
+      };
+    };
+    
+    const status = getStatusInfo();
+
+    return (
+      <div className="glass-morphism rounded-2xl p-6 card-hover animate-fadeInUp backdrop-blur-sm border border-white/20">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-1">
+              {meeting.title || `Meeting with ${getOtherParticipant()}`}
+            </h3>
+            <div className="flex items-center text-white/80 text-sm mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {formatDateTime(meeting.scheduledDateTime)}
+            </div>
+            <div className="flex items-center text-white/70 text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {meeting.duration} minutes
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowDetails(!showDetails)}
+            className="text-white/60 hover:text-white transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showDetails ? "M19 9l-7 7-7-7" : "M9 5l7 7-7 7"} />
+            </svg>
+          </button>
+        </div>
+        
+        {showDetails && (
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <h4 className="text-sm font-medium text-white/80 mb-2">Participants:</h4>
+            <div className="space-y-2">
+              {meeting.participants?.map((email, idx) => (
+                <div key={idx} className="flex items-center text-white/70 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-green-400 mr-2"></div>
+                  {email === userProfile?.email ? 'You' : email}
+                </div>
+              )) || (
+                <div className="text-white/50 text-sm">No participants listed</div>
+              )}
+            </div>
+            <div className="mb-3">
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                status.color === 'blue' ? 'bg-blue-600/20 text-blue-400 border border-blue-600/30' :
+                status.color === 'green' ? 'bg-green-600/20 text-green-400 border border-green-600/30 animate-pulse' :
+                'bg-gray-600/20 text-gray-400 border border-gray-600/30'
+              }`}>
+                {status.text}
+              </span>
+            </div>
+            <div className="flex gap-2 mt-4">
+              {status.canJoin && (
+                <button 
+                  onClick={handleJoinMeeting}
+                  className="flex-1 bg-green-600/20 hover:bg-green-600/30 text-green-400 py-2 px-4 rounded-lg text-sm font-medium transition-colors border border-green-600/30 animate-pulse"
+                >
+                  Join Session
+                </button>
+              )}
+              {!isCompleted && (
+                <button 
+                  onClick={handleDeleteMeeting}
+                  className="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 py-2 px-4 rounded-lg text-sm font-medium transition-colors border border-red-600/30"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const FriendCard = ({ friend }) => {
     const unreadCount = unreadMessagesPerFriend[friend.email]?.unreadCount || 0;
@@ -412,11 +580,24 @@ const HomePage = ({ setErrorMessage }) => {
                 <span>👥</span>
                 <span>Friends</span>
               </span>
-              {unreadMessages > 0 && (
+              {getTotalUnreadCount() > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center animate-pulse-gentle">
-                  {unreadMessages}
+                  {getTotalUnreadCount()}
                 </span>
               )}
+            </button>
+            <button
+              className={`flex-1 relative py-4 px-6 rounded-xl font-semibold transition-all duration-300 ${
+                activeTab === 'meetings' 
+                  ? 'bg-gradient-to-r from-red-600 to-red-800 text-white shadow-lg' 
+                  : 'text-white/70 hover:text-white hover:bg-red-600/10'
+              }`}
+              onClick={() => setActiveTab('meetings')}
+            >
+              <span className="flex items-center justify-center space-x-2">
+                <span>🎥</span>
+                <span>Meetings</span>
+              </span>
             </button>
           </div>
         </div>
@@ -464,6 +645,42 @@ const HomePage = ({ setErrorMessage }) => {
                 friends.map((friend) => <FriendCard key={friend.email} friend={friend} />)
               ) : (
                 <p className="text-gray-300 text-center">No friends yet.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'meetings' && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-6">Scheduled Screen Share Sessions</h2>
+            
+            {/* Screen Share Component */}
+            {isInVideoCall && currentMeeting && (
+              <ScreenShare 
+                meeting={currentMeeting}
+                currentUserEmail={userProfile?.email}
+                onEndCall={() => {
+                  setIsInVideoCall(false);
+                  setCurrentMeeting(null);
+                }}
+              />
+            )}
+            
+            <div className="grid grid-cols-1 gap-4">
+              {scheduledMeetings.length > 0 ? (
+                scheduledMeetings
+                  .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime))
+                  .map((meeting) => (
+                    <MeetingCard key={meeting.id} meeting={meeting} />
+                  ))
+              ) : (
+                <div className="text-center py-12">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-white/30 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-white/70 mb-1">No sessions scheduled yet</h3>
+                  <p className="text-white/50 text-sm">Schedule screen share sessions from your chat window</p>
+                </div>
               )}
             </div>
           </div>

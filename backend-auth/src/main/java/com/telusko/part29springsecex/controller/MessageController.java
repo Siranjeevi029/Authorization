@@ -2,8 +2,10 @@ package com.telusko.part29springsecex.controller;
 
 import com.telusko.part29springsecex.model.FriendRequest;
 import com.telusko.part29springsecex.model.Message;
+import com.telusko.part29springsecex.model.VideoCallRequest;
 import com.telusko.part29springsecex.repo.FriendRequestRepository;
 import com.telusko.part29springsecex.repo.MessageRepository;
+import com.telusko.part29springsecex.repo.VideoCallRequestRepository;
 import com.telusko.part29springsecex.service.JWTService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +35,9 @@ public class MessageController {
 
     @Autowired
     private FriendRequestRepository friendRequestRepository;
+
+    @Autowired
+    private VideoCallRequestRepository videoCallRequestRepository;
 
     @PostMapping("/message")
     public ResponseEntity<?> sendMessage(@RequestHeader("Authorization") String token, @RequestBody Map<String, String> request) {
@@ -131,6 +136,17 @@ public class MessageController {
             Map<String, Map<String, Object>> response = new HashMap<>();
             for (String friendEmail : friendEmails) {
                 List<Message> unreadMessages = messageRepository.findBySenderEmailAndReceiverEmailAndIsReadFalse(friendEmail, email);
+                
+                // Count pending video call requests from this friend
+                int pendingVideoCallRequests = 0;
+                try {
+                    List<VideoCallRequest> videoCallRequests = videoCallRequestRepository.findBySenderEmailAndReceiverEmailAndStatus(
+                            friendEmail, email, "PENDING");
+                    pendingVideoCallRequests = videoCallRequests.size();
+                } catch (Exception e) {
+                    logger.warn("Failed to fetch video call requests for {}: {}", friendEmail, e.getMessage());
+                }
+                
                 List<Message> lastMessages = messageRepository.findBySenderEmailAndReceiverEmailOrSenderEmailAndReceiverEmailOrderByTimestampDesc(
                         email, friendEmail, friendEmail, email);
                 // Log all messages to verify sorting
@@ -139,7 +155,11 @@ public class MessageController {
                         .collect(Collectors.toList()));
                 Optional<Message> lastMessage = lastMessages.isEmpty() ? Optional.empty() : Optional.of(lastMessages.get(0));
                 Map<String, Object> friendData = new HashMap<>();
-                friendData.put("unreadCount", unreadMessages.size());
+                
+                // Include video call requests in unread count
+                int totalUnreadCount = unreadMessages.size() + pendingVideoCallRequests;
+                friendData.put("unreadCount", totalUnreadCount);
+                
                 if (lastMessage.isPresent()) {
                     friendData.put("lastMessage", lastMessage.get().getContent());
                     friendData.put("lastMessageTimestamp", lastMessage.get().getTimestamp().toString());

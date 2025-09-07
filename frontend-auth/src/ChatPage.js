@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from './axios';
+import { format } from 'date-fns';
+import ScreenShare from './ScreenShare';
 
 const ChatPage = () => {
   const { friendEmail } = useParams();
@@ -10,7 +12,224 @@ const ChatPage = () => {
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showVideoCallModal, setShowVideoCallModal] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [duration, setDuration] = useState(30); // Default 30 minutes
+  const [videoCallRequests, setVideoCallRequests] = useState([]);
+  const [scheduledMeeting, setScheduledMeeting] = useState(null);
+  const [pendingRequest, setPendingRequest] = useState(null);
+  const [isInVideoCall, setIsInVideoCall] = useState(false);
   const chatRef = useRef(null);
+  
+  // Generate time slots for the next 7 days, 8AM to 10PM (IST)
+  const generateTimeSlots = () => {
+    const slots = [];
+    
+    // Get current IST time properly
+    const now = new Date();
+    const istNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    
+    console.log('Current IST time:', istNow.toLocaleString());
+    console.log('Current IST hour:', istNow.getHours());
+    console.log('Current IST minute:', istNow.getMinutes());
+    
+    const startHour = 8;
+    const endHour = 22; // 10 PM
+    
+    for (let i = 0; i < 7; i++) {
+      // Create date in IST
+      const date = new Date(istNow);
+      date.setDate(istNow.getDate() + i);
+      date.setHours(0, 0, 0, 0);
+      
+      // Format date as YYYY-MM-DD in IST
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      const isToday = i === 0;
+      
+      if (isToday) {
+        // For today, only show future times
+        const currentHour = istNow.getHours();
+        const currentMinute = istNow.getMinutes();
+        
+        console.log(`Current IST time: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`);
+        
+        // Start from next hour
+        let startFrom = currentHour + 1;
+        
+        // Don't show times before business hours
+        if (startFrom < startHour) {
+          startFrom = startHour;
+        }
+        
+        console.log(`Today's available times starting from: ${startFrom}:00`);
+        
+        for (let h = startFrom; h <= endHour; h++) {
+          slots.push({
+            date: dateStr,
+            time: `${h.toString().padStart(2, '0')}:00`,
+            display: `${h}:00`
+          });
+        }
+      } else {
+        // For future days, show all business hours
+        for (let h = startHour; h <= endHour; h++) {
+          slots.push({
+            date: dateStr,
+            time: `${h.toString().padStart(2, '0')}:00`,
+            display: `${h}:00`
+          });
+        }
+      }
+    }
+    
+    console.log('Generated slots for dates:', slots.map(s => s.date).filter((v, i, a) => a.indexOf(v) === i));
+    return slots;
+  };
+  
+  const [timeSlots, setTimeSlots] = useState([]);
+  
+  // Regenerate time slots every minute to keep them current
+  useEffect(() => {
+    const updateTimeSlots = () => {
+      setTimeSlots(generateTimeSlots());
+    };
+    
+    // Initial generation
+    updateTimeSlots();
+    
+    // Update every minute
+    const interval = setInterval(updateTimeSlots, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  const [showWarning, setShowWarning] = useState(false);
+  
+  const handleScheduleCall = async () => {
+    if (!scheduledDate || !scheduledTime) {
+      setShowWarning(true);
+      setTimeout(() => setShowWarning(false), 3000);
+      return;
+    }
+    
+    const [hours] = scheduledTime.split(':').map(Number);
+    const [year, month, day] = scheduledDate.split('-').map(Number);
+    
+    console.log('Selected date:', scheduledDate);
+    console.log('Selected time:', scheduledTime);
+    console.log('Parsed hours:', hours);
+    
+    // Create datetime in IST - NO timezone conversion
+    const scheduledDateTime = new Date(year, month - 1, day, hours, 0, 0, 0);
+    
+    console.log('Created datetime (local):', scheduledDateTime.toLocaleString());
+    
+    // Verify this is in the future using IST
+    const istNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    console.log('Current IST for comparison:', istNow.toLocaleString());
+    
+    if (scheduledDateTime <= istNow) {
+      alert('Please select a future time');
+      return;
+    }
+    
+    // Format as LocalDateTime for backend (YYYY-MM-DDTHH:mm:ss)
+    const formattedDateTime = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hours.toString().padStart(2, '0')}:00:00`;
+    
+    console.log('Formatted datetime for backend:', formattedDateTime);
+    
+    const requestData = {
+      receiverEmail: friendEmail,
+      scheduledDateTime: formattedDateTime,
+      duration: parseInt(duration)
+    };
+    
+    console.log('Meeting will be from:', scheduledDateTime.toLocaleString());
+    const endTime = new Date(scheduledDateTime.getTime() + (duration * 60 * 1000));
+    console.log('Meeting will end at:', endTime.toLocaleString());
+    
+    console.log('Sending video call request:', requestData);
+    
+    try {
+      // Send video call request to backend
+      const response = await api.post('/api/video-call/request', requestData);
+      console.log('Video call request response:', response.data);
+      
+      // Update local state
+      setPendingRequest({
+        ...requestData,
+        senderEmail: userProfile.email,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
+      
+      setShowVideoCallModal(false);
+      setScheduledDate('');
+      setScheduledTime('');
+      setDuration(30);
+      
+      alert(`Video call request sent to ${friendUsername}!`);
+    } catch (err) {
+      console.error('Failed to send video call request:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      console.error('Request data that failed:', requestData);
+      alert(`Failed to send video call request: ${err.response?.data || err.message}`);
+    }
+  };
+  
+  const handleAcceptVideoCall = async (request) => {
+    try {
+      const response = await api.post(`/api/video-call/accept/${request.id || request.requestId}`);
+      
+      // Create scheduled meeting from response
+      const meeting = response.data;
+      setScheduledMeeting(meeting);
+      setPendingRequest(null);
+      
+      // Show success message in chat style
+      alert('✅ Video call scheduled successfully! Check your Meetings tab.');
+      
+      // Refresh data to get updated meetings
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to accept video call:', err);
+      alert(`❌ Failed to accept video call: ${err.response?.data || err.message}`);
+    }
+  };
+  
+  const handleRejectVideoCall = async (request) => {
+    try {
+      await api.post(`/api/video-call/reject/${request.id || request.requestId}`);
+      setPendingRequest(null);
+      
+      alert('Video call request declined.');
+      
+      // Refresh data
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to reject video call:', err);
+      alert(`❌ Failed to decline video call: ${err.response?.data || err.message}`);
+    }
+  };
+  
+  const handleDeleteMeeting = async () => {
+    if (!scheduledMeeting) return;
+    
+    try {
+      await api.delete(`/api/video-call/meeting/${scheduledMeeting.id}`);
+      setScheduledMeeting(null);
+      // Silently delete - no alert needed
+    } catch (err) {
+      console.error('Failed to delete meeting:', err);
+      // Silently handle error - no alert needed
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -28,6 +247,22 @@ const ChatPage = () => {
 
       const messagesRes = await api.get(`/api/messages/${friendEmail}`);
       setMessages(messagesRes.data || []);
+
+      // Fetch video call requests and scheduled meetings
+      try {
+        // Get latest pending request between users
+        const latestRequestRes = await api.get(`/api/video-call/requests/${friendEmail}/latest`);
+        setPendingRequest(latestRequestRes.data || null);
+        
+        // Find scheduled meeting
+        const meetingsRes = await api.get(`/api/video-call/meetings/${friendEmail}`);
+        const meetings = meetingsRes.data || [];
+        setScheduledMeeting(meetings[0] || null);
+      } catch (err) {
+        console.warn('Failed to fetch video call data:', err);
+        setPendingRequest(null);
+        setScheduledMeeting(null);
+      }
 
       await api.post(`/api/messages/mark-read/${friendEmail}`);
     } catch (err) {
@@ -62,7 +297,7 @@ const ChatPage = () => {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="glass-morphism rounded-2xl p-8 text-center animate-fadeInUp">
+      <div className="glass-morphism rounded-2xl p-8 text-center">
         <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <span className="text-red-400 text-2xl">💬</span>
         </div>
@@ -73,7 +308,7 @@ const ChatPage = () => {
 
   if (error) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="glass-morphism rounded-2xl p-8 text-center animate-fadeInUp">
+      <div className="glass-morphism rounded-2xl p-8 text-center">
         <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <span className="text-red-400 text-2xl">⚠</span>
         </div>
@@ -84,7 +319,7 @@ const ChatPage = () => {
 
   return (
     <div className="min-h-screen py-8 px-4">
-      <div className="max-w-4xl mx-auto glass-morphism rounded-2xl p-6 animate-fadeInUp">
+      <div className="max-w-4xl mx-auto glass-morphism rounded-2xl p-6">
         <div className="flex items-center space-x-4 mb-6">
           <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center">
             <span className="text-white font-bold text-lg">{friendUsername?.charAt(0)?.toUpperCase()}</span>
@@ -112,7 +347,146 @@ const ChatPage = () => {
             })
           )}
         </div>
+        {/* Video Call Requests in Chat */}
+        {pendingRequest && (
+          <div className="mb-4">
+            <div className={`flex ${pendingRequest.senderEmail === userProfile.email ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-md p-4 rounded-xl shadow-lg backdrop-blur-sm border ${
+                pendingRequest.senderEmail === userProfile.email 
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-500/30' 
+                  : 'bg-yellow-600/20 text-white border-yellow-600/30'
+              }`}>
+                <div className="flex items-center mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <h4 className="font-medium">
+                    {pendingRequest.senderEmail === userProfile.email 
+                      ? 'Screen Share Request Sent' 
+                      : 'Screen Share Request'
+                    }
+                  </h4>
+                </div>
+                <p className="text-sm mb-3">
+                  📅 {format(new Date(pendingRequest.scheduledDateTime), 'PPP')}<br/>
+                  🕐 {format(new Date(pendingRequest.scheduledDateTime), 'p')} ({pendingRequest.duration} min)
+                </p>
+                
+                {pendingRequest.senderEmail !== userProfile.email && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleAcceptVideoCall(pendingRequest)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                    >
+                      ✓ Accept
+                    </button>
+                    <button
+                      onClick={() => handleRejectVideoCall(pendingRequest)}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                    >
+                      ✗ Decline
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Scheduled Meeting Display */}
+        {scheduledMeeting && (() => {
+          const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+          const meetingStart = new Date(scheduledMeeting.scheduledDateTime);
+          const meetingEnd = new Date(meetingStart.getTime() + (scheduledMeeting.duration * 60 * 1000));
+          
+          const isFuture = now < meetingStart;
+          const isActive = now >= meetingStart && now <= meetingEnd;
+          const isCompleted = now > meetingEnd;
+          
+          // Auto-delete completed meetings
+          if (isCompleted && scheduledMeeting) {
+            setTimeout(() => handleDeleteMeeting(), 1000);
+            return null;
+          }
+          
+          const getStatusColor = () => {
+            if (isFuture) return 'blue-600/20 border-blue-600/30';
+            if (isActive) return 'green-600/20 border-green-600/30';
+            return 'gray-600/20 border-gray-600/30';
+          };
+          
+          const getStatusText = () => {
+            if (isFuture) return 'Upcoming Meeting';
+            if (isActive) return 'Meeting Active - Join Now!';
+            return 'Meeting Completed';
+          };
+          
+          return (
+            <div className={`mb-4 p-4 bg-${getStatusColor()} rounded-xl`}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="text-white font-medium">{getStatusText()}</h4>
+                  <p className="text-white/70 text-sm">
+                    {format(new Date(scheduledMeeting.scheduledDateTime), 'PPPp')} • {scheduledMeeting.duration} minutes
+                  </p>
+                  {isFuture && (
+                    <p className="text-blue-400 text-xs mt-1">
+                      Starts in {Math.ceil((meetingStart - now) / (1000 * 60))} minutes
+                    </p>
+                  )}
+                  {isActive && (
+                    <p className="text-green-400 text-xs mt-1 animate-pulse">
+                      Meeting is live! Ends in {Math.ceil((meetingEnd - now) / (1000 * 60))} minutes
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {isActive && (
+                    <button 
+                      onClick={() => setIsInVideoCall(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors animate-pulse"
+                    >
+                      Join Session
+                    </button>
+                  )}
+                  {(isFuture || isActive) && (
+                    <button
+                      onClick={handleDeleteMeeting}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        
+        {/* Screen Share Component */}
+        {isInVideoCall && scheduledMeeting && (
+          <ScreenShare 
+            meeting={scheduledMeeting}
+            currentUserEmail={userProfile?.email}
+            onEndCall={() => setIsInVideoCall(false)}
+          />
+        )}
+        
         <div className="flex gap-3">
+          <button
+            onClick={() => setShowVideoCallModal(true)}
+            className={`flex items-center justify-center p-3 rounded-xl transition-colors duration-200 ${
+              scheduledMeeting || pendingRequest 
+                ? 'bg-gray-600/20 border border-gray-600/30 cursor-not-allowed opacity-50'
+                : 'bg-red-600/20 border border-red-600/30 hover:bg-red-600/30'
+            }`}
+            title={scheduledMeeting || pendingRequest ? 'Cannot schedule - session exists or request pending' : 'Schedule Screen Share'}
+            disabled={!!(scheduledMeeting || pendingRequest)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
           <input
             type="text"
             value={messageInput}
@@ -128,6 +502,113 @@ const ChatPage = () => {
             Send
           </button>
         </div>
+        
+        {/* Video Call Scheduling Modal */}
+        {showVideoCallModal && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-red-600/30">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-white">Schedule Screen Share Session</h3>
+                <button 
+                  onClick={() => setShowVideoCallModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {showWarning && (
+            <div className="bg-yellow-500/20 border-l-4 border-yellow-500 p-4 mb-4 rounded">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-100">
+                    Please select both date and time to schedule the call
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Date</label>
+                  <select
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="">Select a date</option>
+                    {Array.from(new Set(timeSlots.map(slot => slot.date))).map((date, index) => {
+                      const dateObj = new Date(date + 'T00:00:00');
+                      const isToday = index === 0;
+                      return (
+                        <option key={date} value={date}>
+                          {isToday ? 'Today' : format(dateObj, 'EEEE, MMMM d')}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                
+                {scheduledDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Time</label>
+                    <select
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    >
+                      <option value="">Select a time</option>
+                      {timeSlots
+                        .filter(slot => slot.date === scheduledDate)
+                        .map((slot, index) => (
+                          <option key={index} value={slot.time}>
+                            {slot.time}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Duration: {duration} minutes
+                  </label>
+                  <input
+                    type="range"
+                    min="15"
+                    max="60"
+                    step="15"
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>15 min</span>
+                    <span>30 min</span>
+                    <span>45 min</span>
+                    <span>60 min</span>
+                  </div>
+                </div>
+                
+                <div className="pt-2">
+                  <button
+                    onClick={handleScheduleCall}
+                    className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-2.5 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Send Video Call Request
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
