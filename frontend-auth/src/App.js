@@ -62,7 +62,7 @@ function App() {
   const handleGoogleSignIn = async (credentialResponse) => {
     setErrorMessage('');
     try {
-      const res = await fetch('http://localhost:8080/api/auth/google', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: credentialResponse.credential }),
