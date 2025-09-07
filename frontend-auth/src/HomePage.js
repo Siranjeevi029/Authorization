@@ -231,7 +231,10 @@ const HomePage = ({ setErrorMessage }) => {
     const [showDetails, setShowDetails] = useState(false);
     
     const formatDateTime = (dateTimeStr) => {
+      if (!dateTimeStr) return 'Invalid date and time';
       const date = new Date(dateTimeStr);
+      if (isNaN(date.getTime())) return 'Invalid date and time';
+      
       const options = { 
         weekday: 'short', 
         month: 'short', 

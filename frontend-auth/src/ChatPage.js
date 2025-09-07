@@ -257,7 +257,20 @@ const ChatPage = () => {
         // Find scheduled meeting
         const meetingsRes = await api.get(`/api/video-call/meetings/${friendEmail}`);
         const meetings = meetingsRes.data || [];
-        setScheduledMeeting(meetings[0] || null);
+        const meeting = meetings[0] || null;
+        
+        // Validate meeting data before setting
+        if (meeting && meeting.scheduledDateTime) {
+          const meetingDate = new Date(meeting.scheduledDateTime);
+          if (isNaN(meetingDate.getTime())) {
+            console.warn('Invalid meeting date received:', meeting.scheduledDateTime);
+            setScheduledMeeting(null);
+          } else {
+            setScheduledMeeting(meeting);
+          }
+        } else {
+          setScheduledMeeting(null);
+        }
       } catch (err) {
         console.warn('Failed to fetch video call data:', err);
         setPendingRequest(null);
