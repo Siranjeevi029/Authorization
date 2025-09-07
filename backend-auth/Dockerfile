@@ -20,6 +20,7 @@ COPY src ./src
 # Build the application
 RUN ./mvnw clean package -DskipTests
 
+# The JAR file will be named based on the finalName in the pom.xml or the default naming convention
 # Expose port 8080
 EXPOSE 8080
 
@@ -27,5 +28,5 @@ EXPOSE 8080
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
-# Run the application
-CMD ["java", "-jar", "target/part29springsecex-0.0.1-SNAPSHOT.jar"]
+# Run the application (using wildcard to match the JAR file)
+CMD ["sh", "-c", "java -jar target/AuthorizationBackend-*.jar"]
