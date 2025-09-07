@@ -261,11 +261,24 @@ const ChatPage = () => {
         
         // Validate meeting data before setting
         if (meeting && meeting.scheduledDateTime) {
-          const meetingDate = new Date(meeting.scheduledDateTime);
+          let meetingDate;
+          
+          // Handle array format from backend [year, month, day, hour, minute]
+          if (Array.isArray(meeting.scheduledDateTime)) {
+            const [year, month, day, hour, minute] = meeting.scheduledDateTime;
+            meetingDate = new Date(year, month - 1, day, hour, minute || 0);
+          } else {
+            meetingDate = new Date(meeting.scheduledDateTime);
+          }
+          
           if (isNaN(meetingDate.getTime())) {
             console.warn('Invalid meeting date received:', meeting.scheduledDateTime);
             setScheduledMeeting(null);
           } else {
+            // Convert array format to ISO string for consistent handling
+            if (Array.isArray(meeting.scheduledDateTime)) {
+              meeting.scheduledDateTime = meetingDate.toISOString();
+            }
             setScheduledMeeting(meeting);
           }
         } else {

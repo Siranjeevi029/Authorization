@@ -232,7 +232,16 @@ const HomePage = ({ setErrorMessage }) => {
     
     const formatDateTime = (dateTimeStr) => {
       if (!dateTimeStr) return 'Invalid date and time';
-      const date = new Date(dateTimeStr);
+      
+      let date;
+      // Handle array format from backend [year, month, day, hour, minute]
+      if (Array.isArray(dateTimeStr)) {
+        const [year, month, day, hour, minute] = dateTimeStr;
+        date = new Date(year, month - 1, day, hour, minute || 0);
+      } else {
+        date = new Date(dateTimeStr);
+      }
+      
       if (isNaN(date.getTime())) return 'Invalid date and time';
       
       const options = { 
