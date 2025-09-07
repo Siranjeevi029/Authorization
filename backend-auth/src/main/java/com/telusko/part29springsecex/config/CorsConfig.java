@@ -34,7 +34,8 @@ public class CorsConfig implements WebMvcConfigurer {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",
-            "https://authorization-frontend.netlify.app"
+            "https://authorization-frontend.netlify.app",
+            "https://authorization-frontend-yui1.onrender.com"
         ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("*"));
