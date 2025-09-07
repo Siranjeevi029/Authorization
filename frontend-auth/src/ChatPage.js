@@ -52,11 +52,17 @@ const ChatPage = () => {
       const isToday = i === 0;
       
       if (isToday) {
-        // For today, only show future times
+        // For today, check if we're past business hours (10 PM)
         const currentHour = istNow.getHours();
         const currentMinute = istNow.getMinutes();
         
         console.log(`Current IST time: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`);
+        
+        // If it's past 10 PM (22:00), skip today entirely
+        if (currentHour >= endHour) {
+          console.log('Past business hours (10 PM), skipping today');
+          continue;
+        }
         
         // Start from next hour
         let startFrom = currentHour + 1;
