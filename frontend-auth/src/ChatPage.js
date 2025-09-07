@@ -427,7 +427,11 @@ const ChatPage = () => {
                 <div>
                   <h4 className="text-white font-medium">{getStatusText()}</h4>
                   <p className="text-white/70 text-sm">
-                    {format(new Date(scheduledMeeting.scheduledDateTime), 'PPPp')} • {scheduledMeeting.duration} minutes
+                    {scheduledMeeting?.scheduledDateTime ? (
+                      <>{format(new Date(scheduledMeeting.scheduledDateTime), 'PPPp')} • {scheduledMeeting.duration} minutes</>
+                    ) : (
+                      'No meeting time scheduled'
+                    )}
                   </p>
                   {isFuture && (
                     <p className="text-blue-400 text-xs mt-1">
