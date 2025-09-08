@@ -400,14 +400,27 @@ const ChatPage = () => {
                   </h4>
                 </div>
                 <p className="text-sm mb-3">
-                  {pendingRequest?.scheduledDateTime && !isNaN(new Date(pendingRequest.scheduledDateTime)) ? (
-                    <>
-                      📅 {format(new Date(pendingRequest.scheduledDateTime), 'PPP')}<br/>
-                      🕐 {format(new Date(pendingRequest.scheduledDateTime), 'p')} ({pendingRequest.duration} min)
-                    </>
-                  ) : (
-                    'Meeting time not available'
-                  )}
+                  {(() => {
+                    if (!pendingRequest?.scheduledDateTime) return 'Meeting time not available';
+                    
+                    let date;
+                    // Handle array format from backend [year, month, day, hour, minute]
+                    if (Array.isArray(pendingRequest.scheduledDateTime)) {
+                      const [year, month, day, hour, minute] = pendingRequest.scheduledDateTime;
+                      date = new Date(year, month - 1, day, hour, minute || 0);
+                    } else {
+                      date = new Date(pendingRequest.scheduledDateTime);
+                    }
+                    
+                    if (isNaN(date.getTime())) return 'Meeting time not available';
+                    
+                    return (
+                      <>
+                        📅 {format(date, 'PPP')}<br/>
+                        🕐 {format(date, 'p')} ({pendingRequest.duration} min)
+                      </>
+                    );
+                  })()}
                 </p>
                 
                 {pendingRequest.senderEmail !== userProfile.email && (
@@ -588,7 +601,9 @@ const ChatPage = () => {
                     <option value="">Select a date</option>
                     {Array.from(new Set(timeSlots.map(slot => slot.date))).map((date, index) => {
                       const dateObj = new Date(date + 'T00:00:00');
-                      const isToday = index === 0;
+                      const today = new Date();
+                      const todayStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+                      const isToday = date === todayStr;
                       return (
                         <option key={date} value={date}>
                           {isToday ? 'Today' : format(dateObj, 'EEEE, MMMM d')}
