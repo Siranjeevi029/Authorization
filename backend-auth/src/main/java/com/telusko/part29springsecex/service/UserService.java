@@ -21,24 +21,46 @@ public class UserService {
     @Autowired
     private UserRepo repo;
 
-
-
+    @Autowired
+    private BCryptPasswordEncoder encoder;
 
     public Users register(Users user) {
-
-            user.setPassword(user.getPassword());
-            repo.save(user);
-            return user;
-        }
+        user.setPassword(encoder.encode(user.getPassword()));
+        repo.save(user);
+        return user;
+    }
 
 
 
     public String verify(Users user) {
-        Authentication authentication = authManager.authenticate(new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword()));
-        if (authentication.isAuthenticated()) {
-            return jwtService.generateToken(user.getEmail());
-        } else {
-            return "fail";
+        try {
+            System.out.println("Attempting to verify user: " + user.getEmail());
+            System.out.println("Password provided: " + user.getPassword());
+            
+            // Check if user exists in database
+            Users dbUser = repo.findByEmail(user.getEmail());
+            if (dbUser == null) {
+                System.out.println("User not found in database: " + user.getEmail());
+                return null;
+            }
+            
+            System.out.println("User found in database. Stored password: " + dbUser.getPassword());
+            
+            Authentication authentication = authManager.authenticate(
+                new UsernamePasswordAuthenticationToken(user.getEmail(), user.getPassword())
+            );
+            
+            if (authentication.isAuthenticated()) {
+                System.out.println("Authentication successful for: " + user.getEmail());
+                return jwtService.generateToken(user.getEmail());
+            } else {
+                System.out.println("Authentication failed for: " + user.getEmail());
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("Authentication error for " + user.getEmail() + ": " + e.getMessage());
+            e.printStackTrace();
+            return null;
         }
     }
 }

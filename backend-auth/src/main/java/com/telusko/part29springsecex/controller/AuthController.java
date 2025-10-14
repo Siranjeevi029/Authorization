@@ -23,11 +23,12 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin("*")
 public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final String googleClientId;
     private final String jwtSecret;
-
+    
     @Autowired
     private UserRepo userRepo;
 

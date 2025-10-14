@@ -110,10 +110,24 @@ function App() {
     }
     
     try {
+      console.log('Attempting registration for:', email);
       const value = await api.post('/register', { email, password });
-      console.log(value);
-      navigate('/email');
+      console.log('Registration response:', value);
+      console.log('Response data:', value.data);
+      
+      if (value.status === 200 && value.data === 'otp sent') {
+        console.log('OTP sent successfully, navigating to /email');
+        navigate('/email');
+      } else {
+        console.log('Unexpected response:', value);
+        setErrorMessage('Unexpected response from server');
+      }
     } catch (error) {
+      console.log('Registration error:', error);
+      console.log('Error response:', error.response);
+      console.log('Error status:', error.response?.status);
+      console.log('Error data:', error.response?.data);
+      
       const errorMsg = error.response?.data || 'Registration failed';
       
       // Check if it's a wait message

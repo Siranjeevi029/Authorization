@@ -54,7 +54,7 @@ public class OtpService {
         // Create new OTP
         TempUser tempUser = new TempUser();
         tempUser.setEmail(user.getEmail());
-        tempUser.setPassword(passwordEncoder.encode(user.getPassword()));
+        tempUser.setPassword(user.getPassword()); // Store plain text password, will be encoded during final registration
         tempUser.setEncodedOtp(passwordEncoder.encode(otp));
         tempUser.setCreatedAt(new Date()); // This will trigger TTL deletion after 60 seconds
         tempUserRepo.save(tempUser);

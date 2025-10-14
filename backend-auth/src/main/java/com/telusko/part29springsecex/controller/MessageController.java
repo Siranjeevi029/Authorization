@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin("*")
 public class MessageController {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageController.class);

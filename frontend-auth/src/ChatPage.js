@@ -22,6 +22,33 @@ const ChatPage = () => {
   const [isInVideoCall, setIsInVideoCall] = useState(false);
   const chatRef = useRef(null);
   
+  // Helper function to safely parse dates
+  const safeParseDate = (dateInput) => {
+    if (!dateInput) return null;
+    
+    try {
+      let date;
+      
+      // Handle array format [year, month, day, hour, minute]
+      if (Array.isArray(dateInput) && dateInput.length >= 5) {
+        // Note: JavaScript Date constructor expects month to be 0-based, but our array is 1-based
+        date = new Date(dateInput[0], dateInput[1] - 1, dateInput[2], dateInput[3], dateInput[4]);
+      } 
+      // Handle string format
+      else if (typeof dateInput === 'string') {
+        date = new Date(dateInput);
+      }
+      // Handle other formats
+      else {
+        date = new Date(dateInput);
+      }
+      
+      return isNaN(date.getTime()) ? null : date;
+    } catch (error) {
+      return null;
+    }
+  };
+  
   // Generate time slots for the next 7 days, 8AM to 10PM (IST)
   const generateTimeSlots = () => {
     const slots = [];
@@ -29,10 +56,6 @@ const ChatPage = () => {
     // Get current IST time properly
     const now = new Date();
     const istNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-    
-    console.log('Current IST time:', istNow.toLocaleString());
-    console.log('Current IST hour:', istNow.getHours());
-    console.log('Current IST minute:', istNow.getMinutes());
     
     const startHour = 8;
     const endHour = 22; // 10 PM
@@ -52,17 +75,11 @@ const ChatPage = () => {
       const isToday = i === 0;
       
       if (isToday) {
-        // For today, check if we're past business hours (10 PM)
+        // For today, only show future times
         const currentHour = istNow.getHours();
         const currentMinute = istNow.getMinutes();
         
         console.log(`Current IST time: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`);
-        
-        // If it's past 10 PM (22:00), skip today entirely
-        if (currentHour >= endHour) {
-          console.log('Past business hours (10 PM), skipping today');
-          continue;
-        }
         
         // Start from next hour
         let startFrom = currentHour + 1;
@@ -126,20 +143,14 @@ const ChatPage = () => {
     const [hours] = scheduledTime.split(':').map(Number);
     const [year, month, day] = scheduledDate.split('-').map(Number);
     
-    console.log('Selected date:', scheduledDate);
-    console.log('Selected time:', scheduledTime);
-    console.log('Parsed hours:', hours);
     
-    // Create datetime properly in IST timezone
+    // Create datetime in IST - NO timezone conversion
     const scheduledDateTime = new Date(year, month - 1, day, hours, 0, 0, 0);
     
-    console.log('Created datetime (local):', scheduledDateTime.toLocaleString());
+    // Verify this is in the future using IST
+    const istNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
     
-    // Use current time for comparison (both in same timezone)
-    const now = new Date();
-    console.log('Current time for comparison:', now.toLocaleString());
-    
-    if (scheduledDateTime <= now) {
+    if (scheduledDateTime <= istNow) {
       alert('Please select a future time');
       return;
     }
@@ -147,7 +158,6 @@ const ChatPage = () => {
     // Format as LocalDateTime for backend (YYYY-MM-DDTHH:mm:ss)
     const formattedDateTime = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hours.toString().padStart(2, '0')}:00:00`;
     
-    console.log('Formatted datetime for backend:', formattedDateTime);
     
     const requestData = {
       receiverEmail: friendEmail,
@@ -155,24 +165,15 @@ const ChatPage = () => {
       duration: parseInt(duration)
     };
     
-    console.log('Meeting will be from:', scheduledDateTime.toLocaleString());
+    // Validate meeting timing
     const endTime = new Date(scheduledDateTime.getTime() + (duration * 60 * 1000));
-    console.log('Meeting will end at:', endTime.toLocaleString());
-    
-    console.log('Sending video call request:', requestData);
     
     try {
       // Send video call request to backend
       const response = await api.post('/api/video-call/request', requestData);
-      console.log('Video call request response:', response.data);
       
-      // Update local state
-      setPendingRequest({
-        ...requestData,
-        senderEmail: userProfile.email,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      });
+      // Update local state with the response from backend (which includes the ID and proper data)
+      setPendingRequest(response.data);
       
       setShowVideoCallModal(false);
       setScheduledDate('');
@@ -181,10 +182,6 @@ const ChatPage = () => {
       
       alert(`Video call request sent to ${friendUsername}!`);
     } catch (err) {
-      console.error('Failed to send video call request:', err);
-      console.error('Error response:', err.response?.data);
-      console.error('Error status:', err.response?.status);
-      console.error('Request data that failed:', requestData);
       alert(`Failed to send video call request: ${err.response?.data || err.message}`);
     }
   };
@@ -204,7 +201,6 @@ const ChatPage = () => {
       // Refresh data to get updated meetings
       await fetchData();
     } catch (err) {
-      console.error('Failed to accept video call:', err);
       alert(`❌ Failed to accept video call: ${err.response?.data || err.message}`);
     }
   };
@@ -219,7 +215,6 @@ const ChatPage = () => {
       // Refresh data
       await fetchData();
     } catch (err) {
-      console.error('Failed to reject video call:', err);
       alert(`❌ Failed to decline video call: ${err.response?.data || err.message}`);
     }
   };
@@ -232,7 +227,6 @@ const ChatPage = () => {
       setScheduledMeeting(null);
       // Silently delete - no alert needed
     } catch (err) {
-      console.error('Failed to delete meeting:', err);
       // Silently handle error - no alert needed
     }
   };
@@ -263,35 +257,8 @@ const ChatPage = () => {
         // Find scheduled meeting
         const meetingsRes = await api.get(`/api/video-call/meetings/${friendEmail}`);
         const meetings = meetingsRes.data || [];
-        const meeting = meetings[0] || null;
-        
-        // Validate meeting data before setting
-        if (meeting && meeting.scheduledDateTime) {
-          let meetingDate;
-          
-          // Handle array format from backend [year, month, day, hour, minute]
-          if (Array.isArray(meeting.scheduledDateTime)) {
-            const [year, month, day, hour, minute] = meeting.scheduledDateTime;
-            meetingDate = new Date(year, month - 1, day, hour, minute || 0);
-          } else {
-            meetingDate = new Date(meeting.scheduledDateTime);
-          }
-          
-          if (isNaN(meetingDate.getTime())) {
-            console.warn('Invalid meeting date received:', meeting.scheduledDateTime);
-            setScheduledMeeting(null);
-          } else {
-            // Convert array format to ISO string for consistent handling
-            if (Array.isArray(meeting.scheduledDateTime)) {
-              meeting.scheduledDateTime = meetingDate.toISOString();
-            }
-            setScheduledMeeting(meeting);
-          }
-        } else {
-          setScheduledMeeting(null);
-        }
+        setScheduledMeeting(meetings[0] || null);
       } catch (err) {
-        console.warn('Failed to fetch video call data:', err);
         setPendingRequest(null);
         setScheduledMeeting(null);
       }
@@ -401,24 +368,14 @@ const ChatPage = () => {
                 </div>
                 <p className="text-sm mb-3">
                   {(() => {
-                    if (!pendingRequest?.scheduledDateTime) return 'Meeting time not available';
-                    
-                    let date;
-                    // Handle array format from backend [year, month, day, hour, minute]
-                    if (Array.isArray(pendingRequest.scheduledDateTime)) {
-                      const [year, month, day, hour, minute] = pendingRequest.scheduledDateTime;
-                      date = new Date(year, month - 1, day, hour, minute || 0);
-                    } else {
-                      date = new Date(pendingRequest.scheduledDateTime);
-                    }
-                    
-                    if (isNaN(date.getTime())) return 'Meeting time not available';
-                    
-                    return (
+                    const parsedDate = safeParseDate(pendingRequest.scheduledDateTime);
+                    return parsedDate ? (
                       <>
-                        📅 {format(date, 'PPP')}<br/>
-                        🕐 {format(date, 'p')} ({pendingRequest.duration} min)
+                        📅 {format(parsedDate, 'PPP')}<br/>
+                        🕐 {format(parsedDate, 'p')} ({pendingRequest.duration} min)
                       </>
+                    ) : (
+                      <span className="text-gray-400">Date/Time not available</span>
                     );
                   })()}
                 </p>
@@ -446,17 +403,22 @@ const ChatPage = () => {
 
         {/* Scheduled Meeting Display */}
         {scheduledMeeting && (() => {
-          const now = new Date();
-          const meetingStart = new Date(scheduledMeeting.scheduledDateTime);
+          const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+          const meetingStart = safeParseDate(scheduledMeeting.scheduledDateTime);
+          
+          // If we can't parse the meeting start time, don't show the meeting
+          if (!meetingStart) {
+            return null;
+          }
+          
           const meetingEnd = new Date(meetingStart.getTime() + (scheduledMeeting.duration * 60 * 1000));
           
           const isFuture = now < meetingStart;
           const isActive = now >= meetingStart && now <= meetingEnd;
-          const isPast = now > meetingEnd;
+          const isCompleted = now > meetingEnd;
           
-          // Auto-delete completed meetings
-          if (isPast && scheduledMeeting) {
-            setTimeout(() => handleDeleteMeeting(), 1000);
+          // Don't display completed meetings - they should be deleted from backend
+          if (isCompleted) {
             return null;
           }
           
@@ -468,8 +430,7 @@ const ChatPage = () => {
           
           const getStatusText = () => {
             if (isFuture) return 'Upcoming Meeting';
-            if (isActive) return 'Meeting Active - Join Now!';
-            return 'Meeting Completed';
+            return 'Meeting Active - Join Now!';
           };
           
           return (
@@ -478,11 +439,14 @@ const ChatPage = () => {
                 <div>
                   <h4 className="text-white font-medium">{getStatusText()}</h4>
                   <p className="text-white/70 text-sm">
-                    {scheduledMeeting?.scheduledDateTime && !isNaN(new Date(scheduledMeeting.scheduledDateTime)) ? (
-                      <>{format(new Date(scheduledMeeting.scheduledDateTime), 'PPPp')} • {scheduledMeeting.duration} minutes</>
-                    ) : (
-                      'No meeting time scheduled'
-                    )}
+                    {(() => {
+                      const parsedDate = safeParseDate(scheduledMeeting.scheduledDateTime);
+                      return parsedDate ? (
+                        <>{format(parsedDate, 'PPPp')} • {scheduledMeeting.duration} minutes</>
+                      ) : (
+                        <span className="text-gray-400">Date/Time not available</span>
+                      );
+                    })()}
                   </p>
                   {isFuture && (
                     <p className="text-blue-400 text-xs mt-1">
@@ -601,9 +565,7 @@ const ChatPage = () => {
                     <option value="">Select a date</option>
                     {Array.from(new Set(timeSlots.map(slot => slot.date))).map((date, index) => {
                       const dateObj = new Date(date + 'T00:00:00');
-                      const today = new Date();
-                      const todayStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-                      const isToday = date === todayStr;
+                      const isToday = index === 0;
                       return (
                         <option key={date} value={date}>
                           {isToday ? 'Today' : format(dateObj, 'EEEE, MMMM d')}

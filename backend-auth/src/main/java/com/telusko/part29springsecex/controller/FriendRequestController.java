@@ -17,11 +17,11 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/friend")
+@CrossOrigin("*")
 public class FriendRequestController {
 
     @Autowired
     private JWTService jwtService;
-
     @Autowired
     private FriendRequestRepository friendRequestRepository;
 

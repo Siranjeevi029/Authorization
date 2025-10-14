@@ -33,13 +33,26 @@ public class VideoCallService {
             throw new RuntimeException("Cannot schedule a meeting in the past");
         }
         
-        // Constraint 1: Check if there's already a scheduled meeting between these users
-        Optional<VideoCallMeeting> existingMeeting = meetingRepository
-            .findScheduledMeetingBetweenUsers(senderEmail, receiverEmail);
+        // Constraint 1: Check for overlapping meetings between these users
+        List<VideoCallMeeting> existingMeetings = meetingRepository
+            .findAllMeetingsBetweenUsers(senderEmail, receiverEmail);
         
-        if (existingMeeting.isPresent()) {
-            throw new RuntimeException("A meeting is already scheduled between these users. " +
-                                     "Please delete the existing meeting before scheduling a new one.");
+        for (VideoCallMeeting meeting : existingMeetings) {
+            if (meeting.getStatus().equals("SCHEDULED")) {
+                LocalDateTime existingStart = meeting.getScheduledDateTimeAsLocalDateTime();
+                if (existingStart != null) {
+                    LocalDateTime existingEnd = existingStart.plusMinutes(meeting.getDuration());
+                    LocalDateTime newEnd = scheduledDateTime.plusMinutes(duration);
+                    
+                    // Check for time overlap
+                    boolean overlaps = (scheduledDateTime.isBefore(existingEnd) && newEnd.isAfter(existingStart));
+                    
+                    if (overlaps) {
+                        throw new RuntimeException("This time slot conflicts with an existing meeting. " +
+                                                 "Please choose a different time.");
+                    }
+                }
+            }
         }
 
         // Constraint 2 & 5: Expire all previous pending requests between these users
@@ -54,7 +67,10 @@ public class VideoCallService {
         // Create new request
         VideoCallRequest newRequest = new VideoCallRequest(senderEmail, receiverEmail, 
                                                          scheduledDateTime, duration);
-        return requestRepository.save(newRequest);
+        
+        VideoCallRequest savedRequest = requestRepository.save(newRequest);
+        
+        return savedRequest;
     }
 
     /**
@@ -112,7 +128,7 @@ public class VideoCallService {
         String title = "Video Call Meeting";
         List<String> participants = Arrays.asList(request.getSenderEmail(), request.getReceiverEmail());
         
-        VideoCallMeeting meeting = new VideoCallMeeting(title, request.getScheduledDateTime(), 
+        VideoCallMeeting meeting = new VideoCallMeeting(title, request.getScheduledDateTimeAsLocalDateTime(), 
                                                        request.getDuration(), participants, 
                                                        request.getSenderEmail());
         meeting.setId(requestId); // Use the same ID as the request for consistency
@@ -142,8 +158,9 @@ public class VideoCallService {
             throw new RuntimeException("This request is no longer pending");
         }
 
-        request.setStatus("REJECTED");
-        requestRepository.save(request);
+        // Delete rejected requests immediately - no need to store them
+        requestRepository.delete(request);
+        System.out.println("Deleted rejected video call request: " + requestId + " (rejected by: " + rejectingUserEmail + ")");
     }
 
     /**
@@ -177,32 +194,95 @@ public class VideoCallService {
 
     /**
      * Scheduled task to automatically delete expired meetings
-     * Runs every 5 minutes to clean up completed meetings
+     * Runs every 30 seconds to ensure immediate cleanup with no history
      */
-    @Scheduled(fixedRate = 300000) // 5 minutes = 300,000 milliseconds
-    public void deleteExpiredMeetings() {
-        LocalDateTime now = LocalDateTime.now();
-        List<VideoCallMeeting> allMeetings = meetingRepository.findAll();
-        
-        for (VideoCallMeeting meeting : allMeetings) {
-            // Calculate meeting end time
-            LocalDateTime meetingEnd = meeting.getScheduledDateTime()
-                .plusMinutes(meeting.getDuration());
+    @Scheduled(fixedRate = 30000) // 30 seconds = 30,000 milliseconds
+    public void cleanupExpiredMeetings() {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            List<VideoCallMeeting> allMeetings = meetingRepository.findAll();
             
-            // If meeting has ended, delete it
-            if (now.isAfter(meetingEnd)) {
-                System.out.println("Auto-deleting expired meeting: " + meeting.getId() + 
-                                 " (ended at: " + meetingEnd + ")");
-                meetingRepository.delete(meeting);
-                
-                // Update corresponding request status if it exists
-                Optional<VideoCallRequest> requestOpt = requestRepository.findById(meeting.getId());
-                if (requestOpt.isPresent()) {
-                    VideoCallRequest request = requestOpt.get();
-                    request.setStatus("COMPLETED");
-                    requestRepository.save(request);
+            for (VideoCallMeeting meeting : allMeetings) {
+                try {
+                    // Calculate meeting end time
+                    LocalDateTime scheduledTime = meeting.getScheduledDateTimeAsLocalDateTime();
+                    if (scheduledTime != null) {
+                        LocalDateTime meetingEnd = scheduledTime.plusMinutes(meeting.getDuration());
+                        
+                        // Delete meetings immediately when they expire (no buffer)
+                        if (meetingEnd.isBefore(now) || meetingEnd.isEqual(now)) {
+                            // Delete the meeting completely
+                            meetingRepository.delete(meeting);
+                            
+                            // Also delete any related video call requests to avoid orphaned data
+                            List<VideoCallRequest> relatedRequests = requestRepository
+                                .findRequestsBetweenUsers(meeting.getParticipants().get(0), 
+                                                        meeting.getParticipants().get(1));
+                            
+                            for (VideoCallRequest request : relatedRequests) {
+                                // Delete completed/accepted requests related to this meeting
+                                if ("ACCEPTED".equals(request.getStatus()) || "COMPLETED".equals(request.getStatus())) {
+                                    requestRepository.delete(request);
+                                }
+                            }
+                            
+                            System.out.println("Completely removed expired meeting and related requests: " + meeting.getId() + " (ended at: " + meetingEnd + ")");
+                        }
+                    }
+                } catch (Exception e) {
+                    // Log error but continue with other meetings
+                    System.err.println("Error processing meeting " + meeting.getId() + ": " + e.getMessage());
                 }
             }
+        } catch (Exception e) {
+            // Log error but don't crash the scheduled task
+            System.err.println("Error in cleanupExpiredMeetings: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Additional cleanup for old video call requests
+     * Runs every 5 minutes to clean up requests based on status and timing
+     * - REJECTED: Already deleted immediately
+     * - PENDING/ACCEPTED/CANCELLED: Delete after scheduled time ends
+     */
+    @Scheduled(fixedRate = 300000) // 5 minutes = 300,000 milliseconds
+    public void cleanupOldRequests() {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            List<VideoCallRequest> allRequests = requestRepository.findAll();
+            
+            for (VideoCallRequest request : allRequests) {
+                try {
+                    LocalDateTime requestTime = request.getScheduledDateTimeAsLocalDateTime();
+                    if (requestTime != null) {
+                        String status = request.getStatus();
+                        
+                        // Calculate when the meeting would end (scheduled time + duration)
+                        LocalDateTime meetingEndTime = requestTime.plusMinutes(request.getDuration());
+                        
+                        // Delete requests after their scheduled meeting time has passed
+                        if (meetingEndTime.isBefore(now) || meetingEndTime.isEqual(now)) {
+                            // Keep PENDING/ACCEPTED/CANCELLED until meeting time ends
+                            if ("PENDING".equals(status) || "ACCEPTED".equals(status) || "CANCELLED".equals(status)) {
+                                requestRepository.delete(request);
+                                System.out.println("Deleted expired video call request: " + request.getId() + " (status: " + status + ", ended at: " + meetingEndTime + ")");
+                            }
+                        }
+                        
+                        // Also clean up very old requests (24+ hours) regardless of status as safety net
+                        LocalDateTime cutoffTime = now.minusHours(24);
+                        if (requestTime.isBefore(cutoffTime)) {
+                            requestRepository.delete(request);
+                            System.out.println("Deleted very old video call request: " + request.getId() + " (older than 24 hours)");
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error processing request " + request.getId() + ": " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error in cleanupOldRequests: " + e.getMessage());
         }
     }
 

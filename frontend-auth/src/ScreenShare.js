@@ -1,6 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 
+// Helper function to safely parse dates (same as in ChatPage)
+const safeParseDate = (dateInput) => {
+  if (!dateInput) return null;
+  
+  try {
+    let date;
+    
+    // Handle array format [year, month, day, hour, minute]
+    if (Array.isArray(dateInput) && dateInput.length >= 5) {
+      // Note: JavaScript Date constructor expects month to be 0-based, but our array is 1-based
+      date = new Date(dateInput[0], dateInput[1] - 1, dateInput[2], dateInput[3], dateInput[4]);
+    } 
+    // Handle string format
+    else if (typeof dateInput === 'string') {
+      date = new Date(dateInput);
+    }
+    // Handle other formats
+    else {
+      date = new Date(dateInput);
+    }
+    
+    return isNaN(date.getTime()) ? null : date;
+  } catch (error) {
+    return null;
+  }
+};
+
 const ScreenShare = ({ meeting, onEndCall, currentUserEmail }) => {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
@@ -309,7 +336,10 @@ const ScreenShare = ({ meeting, onEndCall, currentUserEmail }) => {
             {demoMode && <span className="ml-2 text-xs bg-blue-600 px-2 py-1 rounded">DEMO MODE</span>}
           </h2>
           <p className="text-gray-300 text-sm">
-            {format(new Date(meeting.scheduledDateTime), 'PPPp')} • {meeting.duration} min
+            {(() => {
+              const parsedDate = safeParseDate(meeting.scheduledDateTime);
+              return parsedDate ? format(parsedDate, 'PPPp') : 'Date not available';
+            })()} • {meeting.duration} min
           </p>
         </div>
         <div className="flex items-center gap-4">

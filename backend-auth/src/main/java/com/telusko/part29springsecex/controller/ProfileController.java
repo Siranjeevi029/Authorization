@@ -7,16 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
-
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin("*")
 public class ProfileController {
 
     @Autowired
     private ProfileService profileService;
-
     @Autowired
     private JWTService jwtService;
 

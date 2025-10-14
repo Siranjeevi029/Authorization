@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/video-call")
+@CrossOrigin("*")
 public class VideoCallController {
 
     private static final Logger logger = LoggerFactory.getLogger(VideoCallController.class);
@@ -69,6 +70,7 @@ public class VideoCallController {
                 senderEmail, receiverEmail, scheduledDateTime, duration);
 
             logger.info("Video call request sent from {} to {} for {}", senderEmail, receiverEmail, scheduledDateTime);
+            
             return ResponseEntity.ok(videoCallRequest);
 
         } catch (Exception e) {
@@ -76,6 +78,7 @@ public class VideoCallController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
 
     /**
      * Accept a video call request
@@ -246,11 +249,7 @@ public class VideoCallController {
 
             Optional<VideoCallRequest> latestRequest = videoCallService.getLatestPendingRequestBetweenUsers(userEmail, friendEmail);
             
-            if (latestRequest.isPresent()) {
-                return ResponseEntity.ok(latestRequest.get());
-            } else {
-                return ResponseEntity.ok(null);
-            }
+            return ResponseEntity.ok(latestRequest.orElse(null));
 
         } catch (Exception e) {
             logger.error("Error fetching latest request: {}", e.getMessage());

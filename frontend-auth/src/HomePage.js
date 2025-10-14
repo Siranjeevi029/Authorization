@@ -3,6 +3,33 @@ import { Link } from 'react-router-dom';
 import api from './axios';
 import ScreenShare from './ScreenShare';
 
+// Helper function to safely parse dates (same as in ChatPage)
+const safeParseDate = (dateInput) => {
+  if (!dateInput) return null;
+  
+  try {
+    let date;
+    
+    // Handle array format [year, month, day, hour, minute]
+    if (Array.isArray(dateInput) && dateInput.length >= 5) {
+      // Note: JavaScript Date constructor expects month to be 0-based, but our array is 1-based
+      date = new Date(dateInput[0], dateInput[1] - 1, dateInput[2], dateInput[3], dateInput[4]);
+    } 
+    // Handle string format
+    else if (typeof dateInput === 'string') {
+      date = new Date(dateInput);
+    }
+    // Handle other formats
+    else {
+      date = new Date(dateInput);
+    }
+    
+    return isNaN(date.getTime()) ? null : date;
+  } catch (error) {
+    return null;
+  }
+};
+
 const HomePage = ({ setErrorMessage }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -32,19 +59,7 @@ const HomePage = ({ setErrorMessage }) => {
       setMatches(matchesRes.data.matches || []);
 
       const requestsRes = await api.get('/api/friend/requests');
-      const sortedRequests = (requestsRes.data || []).sort((a, b) => {
-        const getDateFromValue = (dateValue) => {
-          if (Array.isArray(dateValue)) {
-            const [year, month, day, hour, minute, second] = dateValue;
-            return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
-          }
-          return new Date(dateValue);
-        };
-        
-        const dateB = getDateFromValue(b.timestamp || b.createdAt);
-        const dateA = getDateFromValue(a.timestamp || a.createdAt);
-        return dateB - dateA;
-      });
+      const sortedRequests = (requestsRes.data || []).sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
       setFriendRequests(sortedRequests);
 
       const friendsRes = await api.get('/api/friend/friends');
@@ -87,7 +102,6 @@ const HomePage = ({ setErrorMessage }) => {
         const unreadCountsPerFriendRes = await api.get('/api/messages/unread-counts-per-friend');
         setUnreadMessagesPerFriend(unreadCountsPerFriendRes.data || {});
       } catch (err) {
-        console.warn('Failed to fetch unread messages per friend:', err.response?.data || err.message);
         setUnreadMessagesPerFriend({});
       }
       
@@ -96,7 +110,6 @@ const HomePage = ({ setErrorMessage }) => {
         const meetingsRes = await api.get('/api/video-call/meetings');
         setScheduledMeetings(meetingsRes.data || []);
       } catch (err) {
-        console.warn('Failed to fetch scheduled meetings:', err.response?.data || err.message);
         setScheduledMeetings([]);
       }
     } catch (err) {
@@ -159,13 +172,12 @@ const HomePage = ({ setErrorMessage }) => {
         const requestsRes = await api.get('/api/friend/requests');
         setFriendRequests(requestsRes.data || []);
       } catch (err) {
-        console.warn('Failed to mark friend requests as read:', err.message);
+        // Silently handle error
       }
     }
   };
 
   const getUsername = (email) => emailToUsername[email] || email;
-
   const UserCard = ({ user }) => (
     <div className="glass-morphism rounded-2xl p-6 card-hover animate-fadeInUp backdrop-blur-sm border border-white/20">
       <div className="flex items-center space-x-3 mb-4">
@@ -242,19 +254,9 @@ const HomePage = ({ setErrorMessage }) => {
   const MeetingCard = ({ meeting }) => {
     const [showDetails, setShowDetails] = useState(false);
     
-    const formatDateTime = (dateTimeStr) => {
-      if (!dateTimeStr) return 'Invalid date and time';
-      
-      let date;
-      // Handle array format from backend [year, month, day, hour, minute]
-      if (Array.isArray(dateTimeStr)) {
-        const [year, month, day, hour, minute] = dateTimeStr;
-        date = new Date(year, month - 1, day, hour, minute || 0);
-      } else {
-        date = new Date(dateTimeStr);
-      }
-      
-      if (isNaN(date.getTime())) return 'Invalid date and time';
+    const formatDateTime = (dateTimeInput) => {
+      const date = safeParseDate(dateTimeInput);
+      if (!date) return 'Date not available';
       
       const options = { 
         weekday: 'short', 
@@ -291,13 +293,29 @@ const HomePage = ({ setErrorMessage }) => {
     };
     
     // Check meeting status
-    const now = new Date();
-    const meetingStart = new Date(meeting.scheduledDateTime);
-    const meetingEnd = new Date(meetingStart.getTime() + (meeting.duration * 60 * 1000));
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    const meetingStart = safeParseDate(meeting.scheduledDateTime);
     
+    // If we can't parse the meeting start time, treat as invalid
+    if (!meetingStart) {
+      return (
+        <div className="glass-morphism rounded-2xl p-6 card-hover animate-fadeInUp backdrop-blur-sm border border-white/20">
+          <div className="text-center text-white/70">
+            <p>Invalid meeting data</p>
+          </div>
+        </div>
+      );
+    }
+    
+    const meetingEnd = new Date(meetingStart.getTime() + (meeting.duration * 60 * 1000));
     const isFuture = now < meetingStart;
     const isActive = now >= meetingStart && now <= meetingEnd;
     const isCompleted = now > meetingEnd;
+    
+    // Don't display completed meetings - they should be deleted from backend
+    if (isCompleted) {
+      return null;
+    }
     
     const getStatusInfo = () => {
       if (isFuture) {
@@ -308,18 +326,12 @@ const HomePage = ({ setErrorMessage }) => {
           canJoin: false
         };
       }
-      if (isActive) {
-        const minutesToEnd = Math.ceil((meetingEnd - now) / (1000 * 60));
-        return {
-          color: 'green',
-          text: `Live! Ends in ${minutesToEnd} minutes`,
-          canJoin: true
-        };
-      }
+      // If we reach here, it must be active (since completed meetings are filtered out)
+      const minutesToEnd = Math.ceil((meetingEnd - now) / (1000 * 60));
       return {
-        color: 'gray',
-        text: 'Completed',
-        canJoin: false
+        color: 'green',
+        text: `Live! Ends in ${minutesToEnd} minutes`,
+        canJoin: true
       };
     };
     
@@ -386,14 +398,12 @@ const HomePage = ({ setErrorMessage }) => {
                   Join Session
                 </button>
               )}
-              {!isCompleted && (
-                <button 
-                  onClick={handleDeleteMeeting}
-                  className="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 py-2 px-4 rounded-lg text-sm font-medium transition-colors border border-red-600/30"
-                >
-                  Delete
-                </button>
-              )}
+              <button 
+                onClick={handleDeleteMeeting}
+                className="flex-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 py-2 px-4 rounded-lg text-sm font-medium transition-colors border border-red-600/30"
+              >
+                Delete
+              </button>
             </div>
           </div>
         )}
@@ -693,7 +703,14 @@ const HomePage = ({ setErrorMessage }) => {
             <div className="grid grid-cols-1 gap-4">
               {scheduledMeetings.length > 0 ? (
                 scheduledMeetings
-                  .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime))
+                  .sort((a, b) => {
+                    const dateA = safeParseDate(a.scheduledDateTime);
+                    const dateB = safeParseDate(b.scheduledDateTime);
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+                    return dateA - dateB;
+                  })
                   .map((meeting) => (
                     <MeetingCard key={meeting.id} meeting={meeting} />
                   ))

@@ -45,11 +45,24 @@ public class UserController {
             return ResponseEntity.badRequest().body("Please wait " + waitTime + " seconds before requesting a new OTP");
         }
         
-        // Send OTP email only if new OTP was created
-        emailService.sendEmail(email, "Your OTP Code", "Your OTP is: " + otp);
         System.out.println(user.getEmail()+" "+user.getPassword());
-
-        return ResponseEntity.ok("otp sent");
+        System.out.println("OTP generated: " + otp + " for email: " + email);
+        
+        // Send response immediately, then try to send email
+        ResponseEntity<String> response = ResponseEntity.ok("otp sent");
+        
+        // Try to send email in background (non-blocking)
+        new Thread(() -> {
+            try {
+                emailService.sendEmail(email, "Your OTP Code", "Your OTP is: " + otp);
+                System.out.println("OTP email sent successfully to: " + email);
+            } catch (Exception e) {
+                System.err.println("Failed to send OTP email to " + email + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        }).start();
+        
+        return response;
     }
 
     @PostMapping("/login")
