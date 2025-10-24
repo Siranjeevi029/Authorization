@@ -61,20 +61,26 @@ public class OtpService {
         return "SUCCESS";
     }
 
-    public Users verifyOtp(String email, String rawOtp) {
+    public synchronized Users verifyOtp(String email, String rawOtp) {
         TempUser tempUser = tempUserRepo.findByEmail(email);
         if (tempUser == null) return null;
 
-//        boolean isNotExpired = tempUser.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(2));
         boolean matches = passwordEncoder.matches(rawOtp, tempUser.getEncodedOtp());
-//        isNotExpired &&
-        //commanded these two lines coz it won't exist after 1:30
-         if( matches){
-             Users u =  userService.register(new Users(tempUser.getEmail(), tempUser.getPassword(),"local"));
-             tempUserRepo.delete(tempUser);
-             return u;
-         }
-          return null;
-
+        
+        if (matches) {
+            // Check if user already exists to prevent duplicate registration
+            Users existingUser = userService.findByEmail(tempUser.getEmail());
+            if (existingUser != null) {
+                // User already exists, clean up temp user and return existing user
+                tempUserRepo.delete(tempUser);
+                return existingUser;
+            }
+            
+            // User doesn't exist, create new user
+            Users newUser = userService.register(new Users(tempUser.getEmail(), tempUser.getPassword(), "local"));
+            tempUserRepo.delete(tempUser);
+            return newUser;
+        }
+        return null;
     }
 }

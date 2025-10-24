@@ -30,6 +30,10 @@ public class UserService {
         return user;
     }
 
+    public Users findByEmail(String email) {
+        return repo.findByEmail(email);
+    }
+
 
 
     public String verify(Users user) {

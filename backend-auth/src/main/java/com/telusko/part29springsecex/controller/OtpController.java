@@ -28,10 +28,17 @@ public class OtpController {
         String email = request.get("email");
         String otp = request.get("otp");
 
-        if (otpService.verifyOtp(email, otp)!=null) {
-            return ResponseEntity.ok("Email verified!");
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired OTP");
+        try {
+            Users verifiedUser = otpService.verifyOtp(email, otp);
+            if (verifiedUser != null) {
+                return ResponseEntity.ok("Email verified!");
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired OTP");
+            }
+        } catch (Exception e) {
+            System.err.println("Error during OTP verification for " + email + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Verification failed");
         }
     }
     

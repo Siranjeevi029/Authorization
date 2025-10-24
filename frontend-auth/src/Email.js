@@ -8,6 +8,7 @@ const Email = ({email}) => {
   const [timeLeft, setTimeLeft] = useState(60); // 60 seconds = 1 minute
   const [isExpired, setIsExpired] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false); // Boolean flag to prevent multiple submissions
   const navigate = useNavigate();
 
   // Fetch timer from backend and calculate based on DB creation time + 1 minute
@@ -60,6 +61,7 @@ const Email = ({email}) => {
     setIsExpired(false);
     setErrorMessage('');
     setTimeLeft(60);
+    setIsVerifying(false); // Reset verification flag when new OTP is generated
   }, [email]);
 
   // Initial fetch and periodic sync with backend
@@ -111,12 +113,21 @@ const Email = ({email}) => {
       return;
     }
     
+    // Prevent multiple submissions
+    if (isVerifying) {
+      return;
+    }
+    
+    setIsVerifying(true);
+    setErrorMessage(''); // Clear any previous error messages
+    
     try {
       await api.post('/otp/verify', { email, otp: code });
       navigate('/login');
     } catch (err) {
       setErrorMessage('Invalid verification code');
       console.error(err);
+      setIsVerifying(false); // Reset flag on error to allow retry
     }
   };
 
@@ -185,14 +196,14 @@ const Email = ({email}) => {
             
             <button
               type="submit"
-              disabled={isExpired}
+              disabled={isExpired || isVerifying}
               className={`w-full font-semibold py-3 px-6 rounded-xl transition-all duration-300 ${
-                isExpired 
+                isExpired || isVerifying
                   ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
                   : 'btn-gradient text-white hover:scale-105'
               }`}
             >
-              {isExpired ? 'OTP Expired' : 'Verify Email'}
+              {isExpired ? 'OTP Expired' : isVerifying ? 'Verifying...' : 'Verify Email'}
             </button>
           </form>
           

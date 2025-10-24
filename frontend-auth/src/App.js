@@ -11,6 +11,10 @@ import './App.css';
 import EditProfile from './profile/EditProfile';
 import ProfilePage from './ProfilePage';
 import ChatPage from './ChatPage';
+import Dashboard from './Dashboard';
+import Analytics from './components/Analytics';
+import Settings from './components/Settings';
+import Reports from './components/Reports';
 
 function App() {
   const navigate = useNavigate();
@@ -181,6 +185,32 @@ function App() {
               
               {user ? (
                 <div className="flex items-center space-x-6 animate-slideInRight">
+                  <div className="flex items-center space-x-4">
+                    <Link 
+                      to="/dashboard" 
+                      className="text-gray-300 hover:text-white font-medium px-3 py-2 rounded-lg hover:bg-red-600/20 transition-all duration-300"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link 
+                      to="/home" 
+                      className="text-gray-300 hover:text-white font-medium px-3 py-2 rounded-lg hover:bg-red-600/20 transition-all duration-300"
+                    >
+                      Home
+                    </Link>
+                    <Link 
+                      to="/analytics" 
+                      className="text-gray-300 hover:text-white font-medium px-3 py-2 rounded-lg hover:bg-red-600/20 transition-all duration-300"
+                    >
+                      Analytics
+                    </Link>
+                    <Link 
+                      to="/settings" 
+                      className="text-gray-300 hover:text-white font-medium px-3 py-2 rounded-lg hover:bg-red-600/20 transition-all duration-300"
+                    >
+                      Settings
+                    </Link>
+                  </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-700 rounded-full flex items-center justify-center">
                       <span className="text-white font-semibold text-sm">{user.username?.charAt(0)?.toUpperCase()}</span>
@@ -245,6 +275,10 @@ function App() {
               }
             />
             <Route path="/home" element={<HomePage setErrorMessage={setErrorMessage} navigate={navigate} />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/email" element={<Email email={email} />} />
             <Route path="/editprofile" element={<EditProfile navigate={navigate} />} />
             <Route path="/profile" element={<Profile setErrorMessage={setErrorMessage} />} />
